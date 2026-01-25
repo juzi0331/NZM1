@@ -230,10 +230,10 @@ const DIFF_NAME = { '0': '默认', '1': '引导', '2': '普通', '3': '困难', 
 
 function getModeByMapId(mapId) {
     const id = parseInt(mapId);
-    if ([12, 14, 21, 30, 112, 114, 115].includes(id)) return '猎场';
-    if ([300, 304, 308].includes(id)) return '塔防';
+    if ([12, 14, 21, 30, 112, 114, 115].includes(id)) return '僵尸猎场';
+    if ([300, 304, 308].includes(id)) return '塔防战'; /* Also update Tower Defense just in case */
     if ([321, 322, 324].includes(id)) return '时空追猎';
-    if (id >= 1000) return '机甲';
+    if (id >= 1000) return '机甲战';
     return '未知';
 }
 
@@ -346,18 +346,61 @@ function renderMatchHistory(gameList) {
         const startTime = game.dtGameStartTime || '';
         const score = parseInt(game.iScore) || 0;
 
+        // Find match image
+        const found = gameList.find(g => g.iMapId === game.iMapId); // Or just search in global mapInfo if available, but here we can look up in data.gameList or reuse logic. 
+        // Actually the game object itself has iMapId. We can try to find icon from data.gameList if available in scope? 
+        // renderMatchHistory payload is just a list. Let's start with default image or try to pass mapIcons map.
+        // For simplicity, reuse the same fallback logic or if the object already has it.
+        // The 'game' object here comes from filteredList which comes from data.gameList.
+
+        let img = 'images/maps-304.png';
+        if (game.icon) img = game.icon;
+        if (!game.icon) {
+            // Simple fallback based on name or ID if needed, similar to map stats
+            if (mapName.includes('大都会')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-14.png';
+            else if (mapName.includes('复活节')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-12.png';
+            else if (mapName.includes('风暴')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-1000.png';
+            else if (mapName.includes('根除')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-321.png';
+        }
+
+        // Format Date: "01-25 15:13"
+        let dateStr = startTime;
+        try {
+            const d = new Date(startTime);
+            const m = (d.getMonth() + 1).toString().padStart(2, '0');
+            const dd = d.getDate().toString().padStart(2, '0');
+            const hh = d.getHours().toString().padStart(2, '0');
+            const mm = d.getMinutes().toString().padStart(2, '0');
+            dateStr = `${m}-${dd} ${hh}:${mm}`;
+        } catch (e) { }
+
         return `
             <div class="match-item ${isWin ? 'win' : 'loss'}" data-idx="${startIdx + idx}" data-roomid="${game.DsRoomId}" data-mode="${mode}">
-                <div class="match-header">
-                    <span class="match-mode">${mode}</span>
-                    <span class="match-time">${startTime}</span>
+                <div class="match-content-row">
+                    <img src="${img}" class="match-thumb" loading="lazy">
+                    
+                    <div class="match-info-center">
+                        <div class="match-info-top">
+                            <span class="match-result-text ${isWin ? 'text-red' : ''}">${isWin ? '胜利' : '失败'}</span>
+                            <span class="match-mode-text">${mode}</span>
+                        </div>
+                        <div class="match-info-bottom">
+                            <span class="match-map-name">${mapName}-${diffName}</span>
+                            <span class="match-date">${dateStr}</span>
+                        </div>
+                    </div>
+
+                    <div class="match-toggle-btn">
+                        <span class="toggle-text"></span>
+                        <span class="toggle-icon"></span>
+                    </div>
+
+                    <div class="match-info-right">
+                        <div class="match-score-text">${formatNumber(score)}</div>
+                        <div class="match-duration-text">${Math.floor(duration / 60)}分${duration % 60}秒</div>
+                    </div>
                 </div>
-                <div class="match-map">${mapName} - ${diffName}</div>
-                <div class="match-stats">
-                    <span>${isWin ? '✓ 胜利' : '✗ 失败'}</span>
-                    <span>时长 ${durationStr}</span>
-                    <span>伤害 ${formatNumber(score)}</span>
-                </div>
+                
                 <div class="match-details" id="detail-${game.DsRoomId}"></div>
             </div>
         `;

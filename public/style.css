@@ -92,23 +92,52 @@ button:hover {
     background: var(--accent-hover);
 }
 
-/* Stats View */
+/* Navigation */
+/* Navigation */
 .navbar {
-    background: rgba(30, 41, 59, 0.95);
-    padding: 1rem 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 1rem 2rem;
+    background: rgba(0, 0, 0, 0.6);
+    /* Black transparent */
+    backdrop-filter: blur(10px);
+    /* Frosted glass */
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .brand {
     font-size: 1.5rem;
-    font-weight: bold;
-    color: var(--accent);
+    font-weight: 700;
+    color: #ef4444;
+    /* Red Title */
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.actions button {
+    background: rgba(255, 255, 255, 0.1);
+    /* Dark transparent buttons */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.actions button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
 }
 
 .container {
@@ -699,4 +728,223 @@ button:hover {
         width: 100%;
         max-width: 450px;
     }
+}
+
+/* Match History Redesign */
+.match-item {
+    display: flex !important;
+    flex-direction: column;
+    padding: 0 !important;
+    background: transparent !important;
+    /* Fully transparent as requested */
+    border: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    /* Lighter separator */
+    margin-bottom: 0 !important;
+    border-radius: 0 !important;
+    transition: background 0.2s;
+}
+
+.match-item:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.match-content-row {
+    position: relative;
+    /* For absolute centering of toggle */
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    gap: 12px;
+    cursor: pointer;
+    width: 100%;
+}
+
+.match-thumb {
+    width: 80px;
+    height: 48px;
+    /* 16:9 ratioish */
+    object-fit: cover;
+    border-radius: 4px;
+    background: #333;
+    flex-shrink: 0;
+}
+
+.match-info-center {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+    /* Reserve space for center toggle */
+    padding-right: 80px;
+}
+
+.match-info-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    font-weight: bold;
+}
+
+.text-red {
+    color: #ef4444;
+    /* Red for Victory as requested (or just result) */
+}
+
+.match-mode-text {
+    color: #ef4444;
+    /* Red as requested */
+    font-weight: normal;
+    /* Keep normal or make bold? Screenshot implies same visual weight, but normal is fine if color matches. User said "name also red". */
+    font-size: 0.95rem;
+    /* Match result text size a bit better if needed, or keep 0.85rem */
+    margin-left: 4px;
+    /* Add slight spacing from result */
+}
+
+.match-info-bottom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    /* Light gray */
+}
+
+.match-map-name {
+    color: #94a3b8;
+}
+
+.match-date {
+    color: #64748b;
+    font-size: 0.8rem;
+}
+
+.match-info-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 4px;
+    flex-shrink: 0;
+    /* Reserve space for center toggle */
+    padding-left: 80px;
+}
+
+.match-score-text {
+    color: #ef4444;
+    /* Red Score */
+    font-family: 'Impact', sans-serif;
+    /* Try to mimic the blocky font */
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+}
+
+.match-duration-text {
+    color: #f1f5f9;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.match-arrow {
+    display: none;
+    /* Removed */
+}
+
+.match-toggle-btn {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    /* Default color lighter */
+    font-size: 0.85rem;
+    /* Bigger font */
+    cursor: pointer;
+    width: 140px;
+    /* Fixed width area */
+    transition: all 0.2s;
+    z-index: 5;
+    opacity: 0.7;
+}
+
+.match-item:hover .match-toggle-btn {
+    opacity: 1;
+    color: #f1f5f9;
+    /* Bright white on hover */
+}
+
+.toggle-text {
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+/* Line Arrow Design - Bigger and Brighter */
+.toggle-icon {
+    width: 10px;
+    /* Bigger */
+    height: 10px;
+    border: solid currentColor;
+    /* Inherit color */
+    border-width: 0 2px 2px 0;
+    /* Thicker */
+    transform: rotate(45deg);
+    /* Point down */
+    transition: transform 0.3s;
+    margin-bottom: 2px;
+}
+
+/* Expanded State */
+.match-item.expanded .toggle-icon {
+    transform: rotate(-135deg);
+    /* Point up */
+    margin-top: 6px;
+    border-color: var(--accent);
+    /* Highlight when open */
+}
+
+.match-item.expanded .match-toggle-btn {
+    color: var(--accent);
+    /* Blue text when open */
+    opacity: 1;
+}
+
+.match-item.expanded .toggle-text {
+    display: none;
+}
+
+.match-item.expanded .match-toggle-btn::before {
+    content: "收起详细数据";
+    margin-bottom: 4px;
+    font-weight: bold;
+}
+
+/* Simplified Text Logic */
+.toggle-text {
+    font-size: 0;
+}
+
+.toggle-text::after {
+    content: "展开详细数据";
+    font-size: 0.85rem;
+    /* Bigger */
+}
+
+.match-item.expanded .toggle-text::after {
+    content: "收起详细数据";
+}
+
+/* Details container */
+.match-details {
+    border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+    background: rgba(0, 0, 0, 0.2);
+    margin-top: 0 !important;
+    padding: 1rem;
 }
