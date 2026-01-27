@@ -74,6 +74,25 @@ function bindEvents() {
 // --- QR Logic ---
 let qrTimer = null;
 let qrSig = '';
+let isQRPollingActive = false; // Flag to track if we should be polling
+
+// Page Visibility API: Pause polling when page is hidden to save requests
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // Page is hidden, pause polling
+        if (qrTimer) {
+            clearInterval(qrTimer);
+            qrTimer = null;
+        }
+    } else {
+        // Page is visible again, resume polling only if we were actively polling
+        if (isQRPollingActive && qrSig && !qrTimer) {
+            qrTimer = setInterval(checkQR, 3000);
+            // Immediately check once when coming back
+            checkQR();
+        }
+    }
+});
 
 async function startQRLogin() {
     if (qrTimer) clearInterval(qrTimer);
@@ -97,7 +116,8 @@ async function startQRLogin() {
             dom.qrStatus.textContent = '请使用 手机QQ 扫码登录';
 
             // Start polling
-            qrTimer = setInterval(checkQR, 2000);
+            isQRPollingActive = true;
+            qrTimer = setInterval(checkQR, 3000);
         } else {
             throw new Error('Get QR Failed');
         }
@@ -115,8 +135,10 @@ async function checkQR() {
 
         // Correct Status Mapping
         if (json.status === 0) {
-            // Success
+            // Success - stop polling permanently
+            isQRPollingActive = false;
             clearInterval(qrTimer);
+            qrTimer = null;
             dom.qrStatus.textContent = '登录成功！跳转中...';
             dom.qrStatus.style.color = '#10b981';
 
@@ -133,7 +155,10 @@ async function checkQR() {
             dom.qrStatus.textContent = '扫码成功，请在手机上确认';
             dom.qrStatus.style.color = '#f59e0b';
         } else if (json.status === 65 || (json.message && json.message.includes('失效'))) {
+            // QR expired - stop polling permanently
+            isQRPollingActive = false;
             clearInterval(qrTimer);
+            qrTimer = null;
             dom.qrStatus.textContent = '二维码已失效';
             dom.qrOverlay.style.display = 'flex';
         }
