@@ -1,5 +1,6 @@
 import { handleAuthQR, handleAuthCheck } from './auth.js';
 import { handleStats, handleDetail } from './stats.js';
+import { handleCollection } from './collection.js';
 
 export default {
     async fetch(request, env, ctx) {
@@ -32,6 +33,8 @@ export default {
                 response = await handleStats(request);
             } else if (path.startsWith('/api/detail')) {
                 response = await handleDetail(request);
+            } else if (path.startsWith('/api/collection')) {
+                response = await handleCollection(request);
             } else {
                 // If not an API call, try to serve static assets
                 // In Cloudflare Workers with 'assets' config, this is handled automatically if we return 404 or pass through?

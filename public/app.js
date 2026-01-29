@@ -14,6 +14,12 @@ const dom = {
     logoutBtn: document.getElementById('logout-btn'),
     loading: document.getElementById('loading'),
     errorMsg: document.getElementById('error-msg'),
+
+    // Tabs
+    statsTab: document.getElementById('stats-tab'),
+    collectionTab: document.getElementById('collection-tab'),
+
+    // Stats content
     statsContent: document.getElementById('stats-content'),
     modeStats: document.getElementById('mode-stats'),
     mapStats: document.getElementById('map-stats'),
@@ -21,6 +27,17 @@ const dom = {
     pageInfo: document.getElementById('page-info'),
     prevPage: document.getElementById('prev-page'),
     nextPage: document.getElementById('next-page'),
+
+    // Fragment sidebar
+    fragmentList: document.getElementById('fragment-list'),
+
+    // Collection grids
+    weaponGrid: document.getElementById('weapon-grid'),
+    trapGrid: document.getElementById('trap-grid'),
+    pluginGrid: document.getElementById('plugin-grid'),
+    weaponCount: document.getElementById('weapon-count'),
+    trapCount: document.getElementById('trap-count'),
+    pluginCount: document.getElementById('plugin-count'),
 
     // Overview
     gameCount: document.getElementById('off-total-games'),
@@ -32,7 +49,9 @@ const dom = {
 
 const state = {
     cookie: localStorage.getItem('nzm_cookie'),
-    data: null
+    data: null,
+    collection: null,
+    currentTab: 'stats'
 };
 
 // --- Init ---
@@ -51,6 +70,35 @@ function bindEvents() {
     dom.logoutBtn.addEventListener('click', doLogout);
 
     dom.qrOverlay.addEventListener('click', startQRLogin);
+
+    // Navigation Tabs
+    document.querySelectorAll('.nav-tab').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tab = e.target.dataset.tab;
+            switchTab(tab);
+        });
+    });
+
+    // Collection Quality Filters
+    document.querySelectorAll('.filter-btn[data-quality]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.filter-btn[data-quality]').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            const quality = e.target.dataset.quality;
+            filterWeapons(quality);
+        });
+    });
+
+    // Plugin Slot Filters
+    document.querySelectorAll('.filter-btn[data-slot]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.filter-btn[data-slot]').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            const slot = e.target.dataset.slot;
+            filterPlugins(slot);
+        });
+    });
+
 
     // Pagination
     dom.prevPage.addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderMatchHistory(state.data.gameList); updatePagination(Math.ceil(filteredLength(state.data.gameList) / ITEMS_PER_PAGE)); } });
@@ -204,6 +252,8 @@ async function loadStats() {
             state.data = json.data;
             renderStats(json.data);
             dom.statsContent.classList.remove('hidden');
+            // Load fragment progress in sidebar
+            loadFragments();
         } else {
             showError('数据获取失败: ' + (json.message || '未知错误'));
             if (json.message === 'Missing Cookie') doLogout();
@@ -522,4 +572,195 @@ function renderMatchDetail(data, container, mode) {
     container.innerHTML = html;
 }
 
+// --- Tab Switching ---
+function switchTab(tab) {
+    state.currentTab = tab;
+
+    // Update nav tab styles
+    document.querySelectorAll('.nav-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+
+    // Toggle content visibility
+    if (tab === 'stats') {
+        dom.statsTab.classList.remove('hidden');
+        dom.collectionTab.classList.add('hidden');
+    } else if (tab === 'collection') {
+        dom.statsTab.classList.add('hidden');
+        dom.collectionTab.classList.remove('hidden');
+        if (!state.collection) {
+            loadCollection();
+        }
+    }
+}
+
+// --- Collection Data ---
+async function loadCollection() {
+    dom.weaponGrid.innerHTML = '<p style="color:#888;">加载中...</p>';
+    dom.trapGrid.innerHTML = '<p style="color:#888;">加载中...</p>';
+    dom.pluginGrid.innerHTML = '<p style="color:#888;">加载中...</p>';
+
+    try {
+        const res = await fetch(`${API_BASE}/collection?type=all`, {
+            headers: { 'X-NZM-Cookie': state.cookie }
+        });
+        const json = await res.json();
+
+        if (json.success) {
+            state.collection = json.data;
+            renderWeapons(json.data.weapons);
+            renderTraps(json.data.traps);
+            renderPlugins(json.data.plugins);
+
+            // Update counts
+            if (json.data.weaponSummary) {
+                dom.weaponCount.textContent = `(${json.data.weaponSummary.owned}/${json.data.weaponSummary.total})`;
+            }
+            if (json.data.trapSummary) {
+                dom.trapCount.textContent = `(${json.data.trapSummary.owned}/${json.data.trapSummary.total})`;
+            }
+            if (json.data.pluginSummary) {
+                dom.pluginCount.textContent = `(${json.data.pluginSummary.owned}/${json.data.pluginSummary.total})`;
+            }
+
+            // Render fragment progress
+            if (json.data.home && json.data.home.show) {
+                renderFragments(json.data.home.show);
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load collection:', e);
+    }
+}
+
+function getQualityBadge(quality) {
+    switch (quality) {
+        case 4: return '<span class="collection-item-badge badge-legendary">传说</span>';
+        case 3: return '<span class="collection-item-badge badge-epic">史诗</span>';
+        case 2: return '<span class="collection-item-badge badge-rare">稀有</span>';
+        default: return '<span class="collection-item-badge badge-common">普通</span>';
+    }
+}
+
+function renderWeapons(weapons, filterQuality = 'all') {
+    if (!weapons) return;
+
+    let filtered = filterQuality === 'all'
+        ? [...weapons]
+        : weapons.filter(w => w.quality == filterQuality);
+
+    // 排序：已解锁优先，然后按品质从高到低 (4=传说 > 3=史诗 > 2=稀有 > 1=普通)
+    filtered.sort((a, b) => {
+        // 先按是否拥有排序（拥有的在前）
+        if (a.owned !== b.owned) return a.owned ? -1 : 1;
+        // 再按品质排序（高品质在前）
+        return (b.quality || 0) - (a.quality || 0);
+    });
+
+    dom.weaponGrid.innerHTML = filtered.map(w => `
+        <div class="collection-item ${w.owned ? '' : 'not-owned'}" data-quality="${w.quality}">
+            ${getQualityBadge(w.quality)}
+            <img class="collection-item-img" src="${w.pic}" alt="${w.weaponName}" loading="lazy">
+            <div class="collection-item-info">
+                <div class="collection-item-name" title="${w.weaponName}">${w.weaponName}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function filterWeapons(quality) {
+    if (state.collection && state.collection.weapons) {
+        renderWeapons(state.collection.weapons, quality);
+    }
+}
+
+function renderTraps(traps) {
+    if (!traps) return;
+
+    dom.trapGrid.innerHTML = traps.map(t => `
+        <div class="collection-item ${t.owned ? '' : 'not-owned'}">
+            <img class="collection-item-img" src="${t.icon}" alt="${t.trapName}" loading="lazy">
+            <div class="collection-item-info">
+                <div class="collection-item-name" title="${t.trapName}">${t.trapName}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderPlugins(plugins, filterSlot = 'all') {
+    if (!plugins) return;
+
+    const filtered = filterSlot === 'all'
+        ? plugins
+        : plugins.filter(p => p.slotIndex == filterSlot);
+
+    dom.pluginGrid.innerHTML = filtered.map(p => `
+        <div class="collection-item ${p.owned ? '' : 'not-owned'}" data-slot="${p.slotIndex}">
+            ${getQualityBadge(p.quality)}
+            <img class="collection-item-img" src="${p.pic}" alt="${p.itemName}" loading="lazy">
+            <div class="collection-item-info">
+                <div class="collection-item-name" title="${p.itemName}">${p.itemName}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function filterPlugins(slot) {
+    if (state.collection && state.collection.plugins) {
+        renderPlugins(state.collection.plugins, slot);
+    }
+}
+
+// --- Fragment Progress ---
+function renderFragments(fragments) {
+    if (!fragments || fragments.length === 0) {
+        dom.fragmentList.innerHTML = '<p style="color:#888;font-size:0.9rem;">暂无碎片进度</p>';
+        return;
+    }
+
+    // 只显示有碎片进度的武器
+    const withProgress = fragments.filter(f => f.itemProgress && f.itemProgress.current > 0);
+
+    if (withProgress.length === 0) {
+        dom.fragmentList.innerHTML = '<p style="color:#888;font-size:0.9rem;">暂无碎片进度</p>';
+        return;
+    }
+
+    dom.fragmentList.innerHTML = withProgress.map(f => {
+        const progress = f.itemProgress;
+        const percent = Math.min(100, (progress.current / progress.required) * 100);
+        const isComplete = progress.current >= progress.required;
+
+        return `
+            <div class="progress-item">
+                <img class="progress-icon" src="${f.pic || ''}" alt="${f.weaponName}">
+                <div class="progress-info">
+                    <div class="progress-name">${f.weaponName}</div>
+                    <div class="progress-bar-track">
+                        <div class="progress-bar-fill ${isComplete ? 'complete' : ''}" style="width:${percent}%"></div>
+                    </div>
+                    <div class="progress-text">${progress.current}/${progress.required}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Load fragments on stats load
+async function loadFragments() {
+    try {
+        const res = await fetch(`${API_BASE}/collection?type=home`, {
+            headers: { 'X-NZM-Cookie': state.cookie }
+        });
+        const json = await res.json();
+
+        if (json.success && json.data.home) {
+            renderFragments(json.data.home);
+        }
+    } catch (e) {
+        console.error('Failed to load fragments:', e);
+    }
+}
+
 init();
+
