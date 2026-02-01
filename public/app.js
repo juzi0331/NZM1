@@ -916,6 +916,11 @@ function initSidebar() {
 
     // Handle window resize - keep sidebar within bounds
     const keepInBounds = () => {
+        // Skip if sidebar is not visible (e.g., on login page)
+        if (sidebar.offsetWidth === 0 || sidebar.offsetHeight === 0) {
+            return;
+        }
+        
         // Get the original saved position
         const savedPos = localStorage.getItem('sidebar_position');
         let targetLeft, targetTop;
@@ -926,13 +931,12 @@ function initSidebar() {
                 targetLeft = pos.left;
                 targetTop = pos.top;
             } catch (e) {
-                targetLeft = window.innerWidth - sidebar.offsetWidth - 20;
-                targetTop = 80;
+                // No valid saved position, use CSS default (right: 20px)
+                return;
             }
         } else {
-            // Default position
-            targetLeft = window.innerWidth - sidebar.offsetWidth - 20;
-            targetTop = 80;
+            // No saved position, let CSS handle default positioning
+            return;
         }
 
         const maxLeft = window.innerWidth - sidebar.offsetWidth;
@@ -951,8 +955,10 @@ function initSidebar() {
 
     window.addEventListener('resize', keepInBounds);
 
-    // Also check bounds on initial load
-    setTimeout(keepInBounds, 100);
+    // Check bounds on initial load only if there's a saved position
+    if (localStorage.getItem('sidebar_position')) {
+        setTimeout(keepInBounds, 100);
+    }
 }
 
 // Initialize sidebar after DOM ready
