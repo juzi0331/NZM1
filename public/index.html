@@ -18,9 +18,10 @@
         <!-- Login View -->
         <div id="login-view" class="view">
             <div class="login-container">
-                <h1
-                    style="margin-bottom: 2rem; text-shadow: 0 4px 8px rgba(0,0,0,0.5); width: 100%; text-align: center;">
-                    逆战：未来近期数据统计</h1>
+                <div class="login-header">
+                    <img src="images/logo_gcd.png" class="login-logo" alt="Ghost Blows Light Logo">
+                    <h1>逆战：未来数据统计</h1>
+                </div>
 
                 <div class="login-layout">
                     <div class="card login-card">
@@ -93,9 +94,12 @@
         <div id="stats-view" class="view hidden">
             <header class="navbar">
                 <div class="brand">逆战：未来数据统计</div>
-                <div class="nav-tabs">
-                    <button class="nav-tab active" data-tab="stats">战绩</button>
-                    <button class="nav-tab" data-tab="collection">图鉴</button>
+                <div class="nav-center-group">
+                    <img src="images/logo_gcd.png" class="nav-season-logo" alt="Season Logo">
+                    <div class="nav-tabs">
+                        <button class="nav-tab active" data-tab="stats">战绩</button>
+                        <button class="nav-tab" data-tab="collection">图鉴</button>
+                    </div>
                 </div>
                 <div class="actions">
                     <span id="user-info"></span>
@@ -142,7 +146,7 @@
 
                             <!-- Official Stats Section -->
                             <h2 class="section-title" style="margin-top: 0;">官方历史数据 <small
-                                    style="font-size:0.6em;color:#888;font-weight:normal">（不包含机甲/PVP）</small></h2>
+                                    style="font-size:0.6em;color:#bbb;font-weight:normal">（不包含机甲/PVP）</small></h2>
                             <section class="summary-section official-stats">
                                 <div class="stat-card summary-card">
                                     <h3>历史总场次</h3>
@@ -156,7 +160,7 @@
 
                             <!-- Recent Stats Section -->
                             <h2 class="section-title">近期战绩统计 <small
-                                    style="font-size:0.6em;color:#888;font-weight:normal">（最近30天/100场）</small></h2>
+                                    style="font-size:0.6em;color:#bbb;font-weight:normal">（最近30天/100场）</small></h2>
                             <section class="summary-section recent-stats">
                                 <div class="stat-card summary-card">
                                     <h3>近期场次</h3>
@@ -184,7 +188,7 @@
                             <section>
                                 <div class="section-header">
                                     <h2 class="section-title">地图详情 <small
-                                            style="font-size:0.6em;color:#888;font-weight:normal">（近30天/100场场次分布）</small>
+                                            style="font-size:0.6em;color:#bbb;font-weight:normal">（近30天/100场场次分布）</small>
                                     </h2>
                                 </div>
                                 <div id="map-stats" class="grid-container map-grid">

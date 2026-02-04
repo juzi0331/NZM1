@@ -1,12 +1,14 @@
 :root {
-    --bg-color: #0f172a;
-    --card-bg: #1e293b;
-    --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --accent: #3b82f6;
-    --accent-hover: #2563eb;
-    --success: #10b981;
-    --danger: #ef4444;
+    --bg-color: #1a1410;
+    --card-bg: #2a1f18;
+    --text-primary: #f5e6d3;
+    --text-secondary: #a89a8c;
+    --accent: #d4a84b;
+    --accent-hover: #c49a3d;
+    --accent-rgb: 212, 168, 75;
+    --success: #8bc34a;
+    --danger: #c45c4b;
+    --gold-gradient: linear-gradient(135deg, #d4a84b 0%, #c49a3d 50%, #a67c2e 100%);
     --font-main: 'Roboto', sans-serif;
 }
 
@@ -31,12 +33,40 @@ body {
     width: 100%;
     height: 100%;
     z-index: -1;
-    background-image: url('images/maps-304.png');
+    background-image: url('https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-17.png');
     /* Default bg */
     background-size: cover;
     background-position: center;
-    filter: blur(20px) brightness(0.4);
+    filter: blur(3px) brightness(0.65);
     transition: background-image 0.5s ease;
+}
+
+/* Crack overlay effect */
+#bg-layer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+        repeating-linear-gradient(45deg,
+            transparent,
+            transparent 100px,
+            rgba(0, 0, 0, 0.03) 100px,
+            rgba(0, 0, 0, 0.03) 101px),
+        repeating-linear-gradient(-45deg,
+            transparent,
+            transparent 150px,
+            rgba(0, 0, 0, 0.02) 150px,
+            rgba(0, 0, 0, 0.02) 151px),
+        repeating-linear-gradient(90deg,
+            transparent,
+            transparent 200px,
+            rgba(212, 168, 75, 0.02) 200px,
+            rgba(212, 168, 75, 0.02) 201px);
+    pointer-events: none;
+    opacity: 0.8;
 }
 
 .view.hidden {
@@ -56,14 +86,37 @@ body {
 }
 
 .login-card {
-    background: rgba(30, 41, 59, 0.9);
+    background: rgba(42, 31, 24, 0.9);
+
     padding: 2rem;
     border-radius: 1rem;
     width: 100%;
     max-width: 400px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(10px);
-    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.login-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2rem;
+    gap: 1rem;
+    width: 100%;
+}
+
+.login-header h1 {
+    margin: 0;
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+}
+
+.login-logo {
+    height: 80px;
+    width: auto;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+    display: block;
 }
 
 .login-card textarea {
@@ -107,17 +160,73 @@ button:hover {
     top: 0;
     z-index: 100;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    /* Enable relative positioning for absolute children */
+    position: relative;
+    /* Ensure flex context for .actions */
+    display: flex;
+}
+
+.nav-center-group {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    height: 100%;
 }
 
 .brand {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #ef4444;
-    /* Red Title */
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    background: linear-gradient(135deg, #d4a84b 0%, #f0d590 50%, #c49a3d 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    /* Golden Title */
+    text-shadow: none;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+
+
+.nav-season-logo {
+    position: absolute;
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 64px;
+    width: auto;
+    margin-right: 1rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    /* Prevent shrinking */
+    flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+    .nav-center-group {
+        position: static;
+        transform: none;
+        flex: 1;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .brand {
+        display: none;
+        /* Hide brand specific text if needed or just shrink */
+    }
+
+    .nav-season-logo {
+        position: static;
+        transform: none;
+        height: 40px;
+        margin-right: 0.5rem;
+    }
 }
 
 .actions {
+    margin-left: auto;
+    /* Push to right */
     display: flex;
     gap: 1rem;
     align-items: center;
@@ -201,8 +310,8 @@ button:hover {
     display: flex;
     align-items: center;
     gap: 1rem;
-    background: rgba(59, 130, 246, 0.1);
-    border: 1px solid rgba(59, 130, 246, 0.3);
+    background: rgba(212, 168, 75, 0.1);
+    border: 1px solid rgba(212, 168, 75, 0.3);
     border-radius: 12px;
     padding: 1rem 1.25rem;
     margin-bottom: 1.5rem;
@@ -345,7 +454,7 @@ button:hover {
 }
 
 .info-banner {
-    background: rgba(59, 130, 246, 0.1);
+    background: rgba(212, 168, 75, 0.1);
     border-left: 4px solid var(--accent);
     padding: 1rem;
     margin-bottom: 2rem;
