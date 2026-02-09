@@ -56,14 +56,19 @@ const state = {
 
 // --- QQ群号弹窗 ---
 function showGroupPopup(groupName, groupNumber) {
+    // 检查是否是已满的群
+    const isFullGroup = (groupName === '一群' || groupName === '二群');
+    const displayNumber = isFullGroup ? '群已满人' : groupNumber;
+    const numberColor = isFullGroup ? '#ef4444' : '#10b981';
+
     // 创建遮罩层
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;';
-    
+
     // 创建弹窗
     const popup = document.createElement('div');
     popup.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border:2px solid #ef4444;border-radius:16px;padding:2rem;max-width:400px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);';
-    
+
     popup.innerHTML = `
         <div style="font-size:1.5rem;font-weight:bold;color:#f59e0b;margin-bottom:1rem;">⚠️ 重要提醒 ⚠️</div>
         <div style="background:#ef4444;color:#fff;padding:1rem;border-radius:8px;margin-bottom:1.5rem;font-weight:bold;line-height:1.6;">
@@ -72,32 +77,34 @@ function showGroupPopup(groupName, groupNumber) {
             否则将被禁言或移出群聊！
         </div>
         <div style="font-size:1.2rem;color:#94a3b8;margin-bottom:0.5rem;">${groupName}群号</div>
-        <div style="font-size:2rem;font-weight:bold;color:#10b981;margin-bottom:1.5rem;font-family:monospace;letter-spacing:2px;">${groupNumber}</div>
+        <div style="font-size:2rem;font-weight:bold;color:${numberColor};margin-bottom:1.5rem;font-family:monospace;letter-spacing:2px;">${displayNumber}</div>
         <div style="display:flex;gap:1rem;justify-content:center;">
-            <button id="copy-group-btn" style="padding:0.8rem 1.5rem;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer;font-weight:bold;">复制群号</button>
+            ${isFullGroup ? '' : '<button id="copy-group-btn" style="padding:0.8rem 1.5rem;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer;font-weight:bold;">复制群号</button>'}
             <button id="close-group-btn" style="padding:0.8rem 1.5rem;background:#4b5563;color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer;">关闭</button>
         </div>
     `;
-    
+
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
-    
-    // 复制按钮事件
-    popup.querySelector('#copy-group-btn').addEventListener('click', function() {
-        navigator.clipboard.writeText(groupNumber);
-        this.textContent = '已复制!';
-        this.style.background = '#059669';
-        setTimeout(() => {
-            this.textContent = '复制群号';
-            this.style.background = '#10b981';
-        }, 1500);
-    });
-    
+
+    // 复制按钮事件（仅非满人群显示）
+    if (!isFullGroup) {
+        popup.querySelector('#copy-group-btn').addEventListener('click', function () {
+            navigator.clipboard.writeText(groupNumber);
+            this.textContent = '已复制!';
+            this.style.background = '#059669';
+            setTimeout(() => {
+                this.textContent = '复制群号';
+                this.style.background = '#10b981';
+            }, 1500);
+        });
+    }
+
     // 关闭按钮事件
     popup.querySelector('#close-group-btn').addEventListener('click', () => {
         document.body.removeChild(overlay);
     });
-    
+
     // 点击遮罩关闭
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
