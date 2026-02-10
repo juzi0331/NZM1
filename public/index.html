@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 
 <head>
@@ -28,10 +28,10 @@
                         <h2>账号绑定</h2>
                         <p class="subtitle">扫描二维码登录，即可自动同步战绩数据</p>
 
-                        <!-- 微信区警告 -->
+                        <!-- 微信区警�?-->
                         <div
                             style="margin:1rem 0; padding:0.8rem 1rem; background:rgba(239,68,68,0.15); border:1px solid #ef4444; border-radius:8px;">
-                            <p style="margin:0; color:#ef4444; font-weight:bold; font-size:0.95rem;">微信区用户无法使用本工具！</p>
+                            <p style="margin:0; color:#ef4444; font-weight:bold; font-size:0.95rem;">微信区用户无法使用本工具</p>
                         </div>
 
                         <!-- Web QR Login -->
@@ -50,7 +50,7 @@
                                     <span style="color:#10b981; font-size:0.9rem;">点击刷新</span>
                                 </div>
                             </div>
-                            <p id="qr-status" style="font-size:0.9rem; color:#aaa; margin-top:1rem;">请使用 手机QQ 扫码登录</p>
+                            <p id="qr-status" style="font-size:0.9rem; color:#aaa; margin-top:1rem;">请使用手机QQ扫码登录</p>
 
                             <!-- 扫码异常提示 -->
                             <div class="qr-tips"
@@ -59,78 +59,12 @@
                                 <ol style="margin:0; padding-left:1.2rem;">
                                     <li>优先尝试<strong style="color:#10b981;">多次刷新网页</strong>后重新扫码</li>
                                     <li>将手机 WiFi 关闭，<strong style="color:#10b981;">使用流量</strong>扫码登录</li>
-                                    <li>若仍无法解决，可点击右下角<strong style="color:#60a5fa;">「开源仓库」</strong>获取源码本地部署</li>
-                                    <li>或加入 QQ 群获取一键部署的本地包：</li>
                                     <li>不提供手机部署支持，可自行修改后使用termux等工具尝试部署</li>
                                 </ol>
-                                <!-- QQ Group Buttons -->
-                                <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
-                                    <div style="text-align:center;">
-                                        <a href="#" class="qq-group-btn"
-                                            style="background:#ef4444; padding:0.5rem 0.8rem; font-size:0.85rem; opacity:0.7;"
-                                            onclick="showGroupPopup('一群', '1004721478');return false;">一群</a>
-                                        <span class="qq-group-hint"
-                                            style="display:block; margin-top:4px; font-size:0.75rem; color:#ef4444;">群已满人</span>
-                                    </div>
-                                    <div style="text-align:center;">
-                                        <a href="#" class="qq-group-btn"
-                                            style="background:#ef4444; padding:0.5rem 0.8rem; font-size:0.85rem; opacity:0.7;"
-                                            onclick="showGroupPopup('二群', '1006509007');return false;">二群</a>
-                                        <span class="qq-group-hint"
-                                            style="display:block; margin-top:4px; font-size:0.75rem; color:#ef4444;">群已满人</span>
-                                    </div>
-                                    <div style="text-align:center;">
-                                        <a href="#" class="qq-group-btn"
-                                            style="background:#ef4444; padding:0.5rem 0.8rem; font-size:0.85rem; opacity:0.7;"
-                                            onclick="showGroupPopup('三群', '1083911815');return false;">三群</a>
-                                        <span class="qq-group-hint"
-                                            style="display:block; margin-top:4px; font-size:0.75rem; color:#ef4444;">群已满人</span>
-                                    </div>
-                                    <div style="text-align:center;">
-                                        <a href="#" class="qq-group-btn"
-                                            style="background:#ef4444; padding:0.5rem 0.8rem; font-size:0.85rem; opacity:0.7;"
-                                            onclick="showGroupPopup('四群', '1058900416');return false;">四群</a>
-                                        <span class="qq-group-hint"
-                                            style="display:block; margin-top:4px; font-size:0.75rem; color:#ef4444;">群已满人</span>
-                                    </div>
-                                    <div style="text-align:center;">
-                                        <a href="#" class="qq-group-btn"
-                                            style="background:#8b5cf6; padding:0.5rem 0.8rem; font-size:0.85rem;"
-                                            onclick="showGroupPopup('五群', '1070358399');return false;">五群</a>
-                                        <span class="qq-group-hint"
-                                            style="display:block; margin-top:4px; font-size:0.75rem;">四群满进这</span>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Info Panel -->
-                    <div class="info-card-transparent">
-                        <h3>关于本工具</h3>
-                        <ul>
-                            <li>
-                                <strong>工作原理</strong>
-                                <p>通过 QQ 空间扫码登录获取临时的 Cookie，用于请求《逆战：未来工具箱》小程序接口拉取战绩。</p>
-                            </li>
-                            <li>
-                                <strong>隐私安全</strong>
-                                <p>所有敏感数据（Cookie）仅保存在您本地浏览器的缓存中。服务器仅作流量转发，不保存任何数据。</p>
-                            </li>
-                            <li>
-                                <strong>开源透明</strong>
-                                <p>本项目已完全开源。如果您对数据安全有顾虑，可点击右下角按钮前往 GitHub 仓库，下载源码在本地运行。</p>
-                            </li>
-                            <li>
-                                <strong>异地提醒</strong>
-                                <p>本项目部署于 Cloudflare 全球边缘网络，登录时 QQ 安全中心可能会提示境外登录，这属于正常现象。</p>
-                            </li>
-                            <li>
-                                <strong>暂无数据？</strong>
-                                <p style="color: #f59e0b;">登录后若无数据，请先前往手机QQ搜索“逆战未来工具箱”小程序，同意协议后再点击本页刷新按钮。</p>
-                            </li>
-                        </ul>
-                    </div>
                 </div>
             </div>
         </div>
@@ -168,75 +102,11 @@
                     <div class="stats-main">
                         <div id="stats-content" class="hidden">
                             <div class="info-banner" style="font-size:1.1rem; line-height:1.8;">
-                                <p style="margin:0;">⚠️ 数据说明：官方数据为历史总计（不含机甲）。详细分析基于<b>最近 30 天 / 100 场</b>游戏记录。</p>
+                                <p style="margin:0;">⚠️ 数据说明：官方数据为历史总计（不含机甲）。详细分析基于 <b>最近30天 / 100场</b> 游戏记录。</p>
                                 <p style="color: #f59e0b; margin-top: 8px;">💡
-                                    暂无数据？请先前往手机QQ搜索"逆战未来工具箱"小程序，同意协议后再点击本页刷新按钮。</p>
+                                    暂无数据？请先前往手机QQ搜索“逆战未来工具箱”小程序，同意协议后再点击本页刷新按钮。</p>
                                 <p style="color: #94a3b8; margin-top: 8px;">🔄
-                                    数据消失了？可能是Cookie过期，请点击右上角<b>「解除同步」</b>后重新扫码同步即可。</p>
-                            </div>
-
-                            <!-- QQ Group Card -->
-                            <div class="qq-group-card">
-                                <div class="qq-group-icon">💬</div>
-                                <div class="qq-group-info">
-                                    <div class="qq-group-title">逆战未来摸鱼小群</div>
-                                    <div class="qq-group-desc">虽然现在没什么人，但是也可以进来吹水组队哦~</div>
-                                </div>
-                                <div class="qq-group-action"
-                                    style="display:flex; flex-direction:row; gap:10px; align-items:center; flex-wrap:wrap;">
-                                    <div style="text-align:center;">
-                                        <a href="#" class="qq-group-btn"
-                                            style="background:#ef4444; padding:0.5rem 0.8rem; font-size:0.85rem; opacity:0.7;"
-                                            onclick="showGroupPopup('一群', '1004721478');return false;">一群</a>
-                                        <span class="qq-group-hint"
-                                            style="display:block; margin-top:4px; font-size:0.75rem; color:#ef4444;">群已满人</span>
-                                    </div>
-                                    <div style="text-align:center;">
-                                        <a href="#" class="qq-group-btn"
-                                            style="background:#ef4444; padding:0.5rem 0.8rem; font-size:0.85rem; opacity:0.7;"
-                                            onclick="showGroupPopup('二群', '1006509007');return false;">二群</a>
-                                        <span class="qq-group-hint"
-                                            style="display:block; margin-top:4px; font-size:0.75rem; color:#ef4444;">群已满人</span>
-                                    </div>
-                                    <div style="text-align:center;">
-                                        <a href="#" class="qq-group-btn"
-                                            style="background:#ef4444; padding:0.5rem 0.8rem; font-size:0.85rem; opacity:0.7;"
-                                            onclick="showGroupPopup('三群', '1083911815');return false;">三群</a>
-                                        <span class="qq-group-hint"
-                                            style="display:block; margin-top:4px; font-size:0.75rem; color:#ef4444;">群已满人</span>
-                                    </div>
-                                    <div style="text-align:center;">
-                                        <a href="#" class="qq-group-btn"
-                                            style="background:#ef4444; padding:0.5rem 0.8rem; font-size:0.85rem; opacity:0.7;"
-                                            onclick="showGroupPopup('四群', '1058900416');return false;">四群</a>
-                                        <span class="qq-group-hint"
-                                            style="display:block; margin-top:4px; font-size:0.75rem; color:#ef4444;">群已满人</span>
-                                    </div>
-                                    <div style="text-align:center;">
-                                        <a href="#" class="qq-group-btn"
-                                            style="background:#8b5cf6; padding:0.5rem 0.8rem; font-size:0.85rem;"
-                                            onclick="showGroupPopup('五群', '1070358399');return false;">五群</a>
-                                        <span class="qq-group-hint"
-                                            style="display:block; margin-top:4px; font-size:0.75rem;">四群满进这</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Sponsor List Card -->
-                            <div class="qq-group-card"
-                                style="background:linear-gradient(135deg, rgba(255,105,180,0.2), rgba(255,182,193,0.15)); border:1px solid rgba(255,105,180,0.5);">
-                                <div class="qq-group-icon" style="background:transparent; font-size:2rem;">🌸</div>
-                                <div class="qq-group-info" style="flex:1;">
-                                    <div class="qq-group-title" style="color:#ff69b4;">赞助者名单 <span
-                                            style="font-size:0.75rem; color:#ffb6c1; font-weight:normal;">（排序不分先后）</span>
-                                    </div>
-                                    <div class="qq-group-desc"
-                                        style="color:#ffb6c1; font-size:0.95rem; line-height:1.8; margin-top:6px;">
-                                        感谢以下大佬的支持：<br>
-                                        <span
-                                            style="color:#ffd700;">一***橙子🍊，匿名大佬，李**cc，再*吧，sn0***1ne25，得*沃，A**u，可爱小***oro，盛，夹*酱，包*头，*鹊，CT**付，重***城，匿名大佬，Ci**ue，*~，Z，Un***tr，后***海，^_^，匿名大佬，雾*酱，罗*花，不关**的事，*白，怯，Fl***ed，向着***发，*丁，自*琦，：，李，*心，天*了，當***雞</span>
-                                    </div>
-                                </div>
+                                    数据消失了？可能是Cookie过期，请点击右上角 <b>「解除同步」</b> 后重新扫码同步即可。</p>
                             </div>
 
                             <!-- Official Stats Section -->
@@ -255,7 +125,7 @@
 
                             <!-- Recent Stats Section -->
                             <h2 class="section-title">近期战绩统计 <small
-                                    style="font-size:0.6em;color:#bbb;font-weight:normal">（最近30天/100场）</small></h2>
+                                    style="font-size:0.6em;color:#bbb;font-weight:normal">（最近30天 / 100场）</small></h2>
                             <section class="summary-section recent-stats">
                                 <div class="stat-card summary-card">
                                     <h3>近期场次</h3>
@@ -283,7 +153,7 @@
                             <section>
                                 <div class="section-header">
                                     <h2 class="section-title">地图详情 <small
-                                            style="font-size:0.6em;color:#bbb;font-weight:normal">（近30天/100场场次分布）</small>
+                                            style="font-size:0.6em;color:#bbb;font-weight:normal">（近30天 / 100场场次分布）</small>
                                     </h2>
                                 </div>
                                 <div id="map-stats" class="grid-container map-grid">
@@ -310,14 +180,6 @@
                                 </div>
                             </section>
 
-                            <!-- Donate Card Section -->
-                            <section class="donate-section">
-                                <div class="donate-card">
-                                    <h2 class="donate-title">支持作者</h2>
-                                    <img src="images/donate-wechat.png" alt="微信赞赏码" class="donate-qr-large">
-                                    <p class="donate-text">维护不易，若有帮助到你，可以在条件允许的情况下请作者喝杯咖啡~ 我会在官方小程序优化前一直维护哒~</p>
-                                </div>
-                            </section>
                         </div>
                     </div><!-- /.stats-main -->
 
@@ -330,23 +192,10 @@
                             </button>
                         </div>
                         <div id="fragment-list" class="sidebar-content">
-                            <p style="color:#888;font-size:0.9rem;">加载中...</p>
+                            <p style="color:#888;font-size:0.9rem;">加载�?..</p>
                         </div>
                     </aside>
 
-                    <!-- Donate Floating Sidebar (PC Only) -->
-                    <aside id="donate-sidebar" class="donate-sidebar">
-                        <div class="sidebar-header" id="donate-drag-handle">
-                            <h3>支持作者 <span class="sidebar-hint">点击右上角可隐藏</span></h3>
-                            <button id="donate-toggle" class="sidebar-toggle-btn" title="缩小为浮动球">
-                                <span class="toggle-icon-minimize"></span>
-                            </button>
-                        </div>
-                        <div class="sidebar-content donate-content">
-                            <img src="images/donate-wechat.png" alt="微信赞赏码" class="donate-qr">
-                            <p class="donate-desc">维护不易，若有帮助到你，可以在条件允许的情况下请作者喝杯咖啡，我会在官方小程序优化前一直维护哒~</p>
-                        </div>
-                    </aside>
                 </div><!-- /.stats-layout -->
 
                 <!-- Collection Tab Content -->
@@ -393,11 +242,7 @@
     </div>
     <script src="app.js?v=3"></script>
 
-    <!-- GitHub Link -->
-    <a href="https://github.com/HaMan412/NZM" target="_blank" class="github-fab" title="查看源码">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub">
-        <span>开源仓库</span>
-    </a>
 </body>
 
 </html>
+
