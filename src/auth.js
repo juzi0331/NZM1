@@ -6,6 +6,15 @@ export async function handleAuthQR(request) {
     // 1. Fetch QR Image. Added daid=5 (QZone) and pt_3rd_aid=0 to match standard requests.
     const qrUrl = 'https://ssl.ptlogin2.qq.com/ptqrshow?appid=549000912&e=2&l=M&s=3&d=72&v=4&t=0.5' + Date.now() + '&daid=5&pt_3rd_aid=0';
     const resp = await fetch(qrUrl);
+    if (!resp.ok) {
+        return new Response(JSON.stringify({
+            success: false,
+            message: `QR upstream failed: ${resp.status}`
+        }), {
+            status: 502,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 
     // 2. Get qrsig from headers
     const setCookie = resp.headers.get('set-cookie') || '';
@@ -15,6 +24,15 @@ export async function handleAuthQR(request) {
 
     // 3. Convert image to base64
     const arrayBuffer = await resp.arrayBuffer();
+    if (!qrsig || !arrayBuffer || arrayBuffer.byteLength === 0) {
+        return new Response(JSON.stringify({
+            success: false,
+            message: 'Failed to read qrsig from upstream response'
+        }), {
+            status: 502,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
     const dataUrl = `data:image/png;base64,${base64}`;
 
@@ -28,7 +46,12 @@ export async function handleAuthCheck(request) {
     const url = new URL(request.url);
     const qrsig = url.searchParams.get('qrsig');
 
-    if (!qrsig) return new Response(JSON.stringify({ msg: 'missing qrsig' }));
+    if (!qrsig) {
+        return new Response(JSON.stringify({ success: false, status: -1, message: 'missing qrsig' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 
     const ptqrtoken = getPtqrToken(qrsig);
     const checkUrl = `https://ssl.ptlogin2.qq.com/ptqrlogin?u1=https%3A%2F%2Fqzone.qq.com%2F&ptqrtoken=${ptqrtoken}&ptredirect=0&h=1&t=1&g=1&from_ui=1&ptlang=2052&action=0-0-${Date.now()}&js_ver=21020514&js_type=1&login_sig=&pt_uistyle=40&aid=549000912&daid=5&`;
