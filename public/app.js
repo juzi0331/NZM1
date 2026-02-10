@@ -144,7 +144,12 @@ document.addEventListener('visibilitychange', () => {
 });
 
 async function startQRLogin() {
-    if (qrTimer) clearInterval(qrTimer);
+    if (qrTimer) {
+        clearInterval(qrTimer);
+        qrTimer = null;
+    }
+    isQRPollingActive = false;
+    qrSig = '';
 
     dom.qrLoading.style.display = 'flex';
     dom.qrOverlay.style.display = 'none';
@@ -152,11 +157,20 @@ async function startQRLogin() {
     dom.qrStatus.textContent = '姝ｅ湪鑾峰彇浜岀淮鐮?..';
     dom.qrStatus.style.color = '#aaa';
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
     try {
-        const res = await fetch(`${API_BASE}/auth/qr`);
+        const res = await fetch(`${API_BASE}/auth/qr`, {
+            signal: controller.signal,
+            cache: 'no-store'
+        });
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
         const json = await res.json();
 
-        if (json.success) {
+        if (json?.success && json?.data?.qrcode && json?.data?.qrsig) {
             dom.qrImg.src = json.data.qrcode;
             qrSig = json.data.qrsig;
 
@@ -167,19 +181,24 @@ async function startQRLogin() {
             // Start polling
             isQRPollingActive = true;
             qrTimer = setInterval(checkQR, 3000);
+            checkQR();
         } else {
             throw new Error('Get QR Failed');
         }
     } catch (e) {
-        dom.qrStatus.textContent = '鑾峰彇浜岀淮鐮佸け璐ワ紝璇峰埛鏂伴〉闈㈤噸璇?;
+        dom.qrLoading.style.display = 'none';
+        dom.qrImg.style.display = 'none';
+        dom.qrStatus.textContent = 'Failed to load QR. Click to retry.';
         dom.qrOverlay.style.display = 'flex';
+    } finally {
+        clearTimeout(timeoutId);
     }
 }
 
 async function checkQR() {
     if (!qrSig) return;
     try {
-        const res = await fetch(`${API_BASE}/auth/check?qrsig=${qrSig}`);
+        const res = await fetch(`${API_BASE}/auth/check?qrsig=${encodeURIComponent(qrSig)}`);
         const json = await res.json();
 
         // Correct Status Mapping
