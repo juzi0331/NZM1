@@ -1,4 +1,4 @@
-import { handleAuthQR, handleAuthCheck } from './auth.js';
+import { handleAuthQR, handleAuthCheck, handleWxQR, handleWxCheck } from './auth.js';
 import { handleStats, handleDetail } from './stats.js';
 import { handleCollection } from './collection.js';
 
@@ -25,7 +25,11 @@ export default {
 
         try {
             let response;
-            if (path.startsWith('/api/auth/qr')) {
+            if (path.startsWith('/api/auth/wx-qr')) {
+                response = await handleWxQR(request);
+            } else if (path.startsWith('/api/auth/wx-check')) {
+                response = await handleWxCheck(request);
+            } else if (path.startsWith('/api/auth/qr')) {
                 response = await handleAuthQR(request);
             } else if (path.startsWith('/api/auth/check')) {
                 response = await handleAuthCheck(request);
