@@ -1897,3 +1897,357 @@ button:hover {
     border-color: var(--accent);
     box-shadow: 0 0 6px rgba(212, 168, 75, 0.4);
 }
+
+/* Checkpoint Times Display */
+.checkpoint-container {
+    margin-bottom: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    padding: 0.8rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.checkpoint-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fb923c;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.checkpoint-list {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.checkpoint-item {
+    flex: 1;
+    min-width: 110px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.5rem;
+    padding: 0.65rem;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.checkpoint-item:hover {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.checkpoint-name {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    margin-bottom: 0.3rem;
+    font-weight: 500;
+}
+
+.checkpoint-time {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--success);
+    text-shadow: 0 0 8px rgba(139, 195, 74, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .checkpoint-list {
+        flex-direction: column;
+    }
+
+    .checkpoint-item {
+        min-width: 100%;
+    }
+
+    .checkpoint-container {
+        padding: 0.75rem;
+    }
+
+    .checkpoint-title {
+        font-size: 0.85rem;
+    }
+}
+
+/* Global Toggle Feature */
+.global-toggle-btn {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.3rem;
+    padding: 0.35rem 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-primary);
+}
+
+.global-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--accent);
+}
+
+.line-icon {
+    display: block;
+}
+
+.player-view {
+    transition: opacity 0.3s ease;
+}
+
+.player-item .hidden,
+.user-detail-row .hidden {
+    display: none !important;
+}
+
+/* Compact Equipment View */
+.player-equipment-inline {
+    padding: 0.25rem 0;
+    animation: fadeIn 0.3s ease;
+}
+
+.equipment-inline-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.player-avatar-small {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--accent);
+}
+
+.player-name-small {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.equipment-compact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.4rem;
+}
+
+.weapon-card-compact {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.4rem;
+    padding: 0.3rem;
+    text-align: center;
+    transition: all 0.2s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 80px;
+}
+
+.weapon-card-compact:hover {
+    background: rgba(0, 0, 0, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.weapon-image-compact {
+    width: 100%;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.2rem;
+}
+
+.weapon-image-compact img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.weapon-name-compact {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    line-height: 1.2;
+    margin-bottom: 0.2rem;
+}
+
+/* Compact Plugin Display */
+.weapon-plugins-compact {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    margin-top: auto;
+    width: 100%;
+    padding-top: 2px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.compact-plugin-icon {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.compact-plugin-icon:hover {
+    opacity: 1;
+    transform: scale(1.2);
+}
+
+/* Reuse existing quality colors for borders */
+.weapon-card-compact.weapon-quality-4 {
+    border-color: rgba(212, 168, 75, 0.4);
+}
+
+.weapon-card-compact.weapon-quality-3 {
+    border-color: rgba(168, 85, 247, 0.4);
+}
+
+.weapon-card-compact.weapon-quality-2 {
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Equipment View Large Mode */
+
+/* Ensure toggle container is centered */
+.global-toggle-container {
+    justify-content: center !important;
+}
+
+/* Large Player Cards Layout */
+.player-list.large-mode {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.player-list.large-mode .player-item {
+    padding: 1.25rem;
+}
+
+/* User Detail Row Large Mode */
+.user-detail-row.large-mode {
+    padding: 1.25rem;
+}
+
+/* Large Header Elements */
+.user-detail-row.large-mode .equipment-inline-header,
+.player-list.large-mode .equipment-inline-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.8rem;
+}
+
+.user-detail-row.large-mode .player-avatar-small,
+.player-list.large-mode .player-avatar-small {
+    width: 36px;
+    height: 36px;
+}
+
+.user-detail-row.large-mode .player-name-small,
+.player-list.large-mode .player-name-small {
+    font-size: 1rem;
+}
+
+/* Large Equipment Grid */
+.large-mode .equipment-compact-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 1rem;
+}
+
+/* Large Weapon Card */
+.large-mode .weapon-card-compact {
+    padding: 0.8rem 0.5rem;
+    min-height: 160px;
+}
+
+.large-mode .weapon-image-compact {
+    height: 60px;
+    margin-bottom: 0.5rem;
+}
+
+.large-mode .weapon-image-compact img {
+    max-height: 100%;
+}
+
+.large-mode .weapon-name-compact {
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+/* Large Plugins Visibility */
+.large-mode .weapon-plugins-compact {
+    gap: 4px;
+    padding-top: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.large-mode .compact-plugin-icon {
+    width: 56px;
+    height: 56px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+    padding: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Plugin Name Visibility */
+.plugin-item-compact {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    max-width: 64px;
+}
+
+.plugin-name-compact {
+    display: none;
+}
+
+.large-mode .plugin-name-compact {
+    display: block;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 4px;
+    width: 100%;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+
+.large-mode .compact-plugin-icon {
+    margin-bottom: 0;
+}

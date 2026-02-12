@@ -1,4 +1,6 @@
-﻿const API_BASE = '/api'; // Relative path for Worker
+const API_BASE = '/api'; // Relative path for Worker
+// Placeholder for checkpoint area names (ID -> Name)
+const CHECKPOINT_AREAS = {};
 
 const dom = {
     loginView: document.getElementById('login-view'),
@@ -54,6 +56,199 @@ const state = {
     currentTab: 'stats'
 };
 
+// --- 登录方式切换 ---
+function switchLoginMethod(method) {
+    const qqBtn = document.getElementById('method-qq');
+    const wechatBtn = document.getElementById('method-wechat');
+    const qqContainer = document.getElementById('qr-login-container');
+    const wechatContainer = document.getElementById('wechat-login-container');
+
+    if (method === 'wechat') {
+        qqBtn.style.background = '#1f2937';
+        qqBtn.style.color = '#9ca3af';
+        qqBtn.classList.remove('active');
+        wechatBtn.style.background = '#10b981';
+        wechatBtn.style.color = '#fff';
+        wechatBtn.classList.add('active');
+        qqContainer.style.display = 'none';
+        wechatContainer.style.display = 'block';
+        // Stop QQ QR polling when switching to WeChat
+        if (qrTimer) { clearInterval(qrTimer); qrTimer = null; }
+        isQRPollingActive = false;
+        // Start WeChat QR login
+        startWxQRLogin();
+    } else {
+        wechatBtn.style.background = '#1f2937';
+        wechatBtn.style.color = '#9ca3af';
+        wechatBtn.classList.remove('active');
+        qqBtn.style.background = '#8b5cf6';
+        qqBtn.style.color = '#fff';
+        qqBtn.classList.add('active');
+        qqContainer.style.display = 'block';
+        wechatContainer.style.display = 'none';
+        // Stop WeChat QR polling when switching to QQ
+        if (wxQrTimer) { clearInterval(wxQrTimer); wxQrTimer = null; }
+        isWxQRPollingActive = false;
+    }
+}
+
+// --- WeChat QR Login ---
+let wxQrTimer = null;
+let wxQrUuid = '';
+let isWxQRPollingActive = false;
+let wxQrPollingInFlight = false; // Prevent overlapping requests
+
+async function startWxQRLogin() {
+    if (wxQrTimer) clearInterval(wxQrTimer);
+
+    const wxQrImg = document.getElementById('wx-qr-img');
+    const wxQrLoading = document.getElementById('wx-qr-loading');
+    const wxQrOverlay = document.getElementById('wx-qr-overlay');
+    const wxQrStatus = document.getElementById('wx-qr-status');
+
+    wxQrLoading.style.display = 'flex';
+    wxQrOverlay.style.display = 'none';
+    wxQrImg.style.display = 'none';
+    wxQrStatus.textContent = '正在获取微信二维码...';
+    wxQrStatus.style.color = '#aaa';
+
+    try {
+        const res = await fetch(`${API_BASE}/auth/wx-qr`);
+        const json = await res.json();
+
+        if (json.success) {
+            wxQrImg.src = json.data.qrcode;
+            wxQrUuid = json.data.uuid;
+
+            wxQrLoading.style.display = 'none';
+            wxQrImg.style.display = 'block';
+            wxQrStatus.textContent = '请使用微信扫码登录';
+
+            isWxQRPollingActive = true;
+            // Use longer interval since backend long-polls for up to 25s
+            wxQrTimer = setInterval(checkWxQR, 4000);
+        } else {
+            throw new Error(json.message || '获取二维码失败');
+        }
+    } catch (e) {
+        const wxQrStatus = document.getElementById('wx-qr-status');
+        wxQrStatus.textContent = '获取微信二维码失败，点击重试';
+        document.getElementById('wx-qr-overlay').style.display = 'flex';
+        document.getElementById('wx-qr-loading').style.display = 'none';
+    }
+}
+
+async function checkWxQR() {
+    if (!wxQrUuid) return;
+    if (wxQrPollingInFlight) return; // Skip if previous request still pending
+    wxQrPollingInFlight = true;
+
+    const wxQrStatus = document.getElementById('wx-qr-status');
+    const wxQrOverlay = document.getElementById('wx-qr-overlay');
+
+    try {
+        const res = await fetch(`${API_BASE}/auth/wx-check?uuid=${wxQrUuid}`);
+        const json = await res.json();
+
+        if (json.status === 0 && json.data?.cookie) {
+            // Login success
+            isWxQRPollingActive = false;
+            clearInterval(wxQrTimer);
+            wxQrTimer = null;
+            wxQrStatus.textContent = '登录成功！正在加载数据...';
+            wxQrStatus.style.color = '#10b981';
+
+            state.cookie = json.data.cookie;
+            localStorage.setItem('nzm_cookie', state.cookie);
+            localStorage.setItem('nzm_login_type', 'wechat');
+            loadStats();
+        } else if (json.status === -1 || json.success === false) {
+            // Code exchange failed
+            wxQrStatus.textContent = json.message || 'Token交换失败，请重试';
+            wxQrStatus.style.color = '#ef4444';
+            // Don't stop polling - let user retry with a new QR
+            isWxQRPollingActive = false;
+            clearInterval(wxQrTimer);
+            wxQrTimer = null;
+            wxQrOverlay.style.display = 'flex';
+        } else if (json.status === 408) {
+            wxQrStatus.textContent = '请使用微信扫码登录';
+            wxQrStatus.style.color = '#aaa';
+        } else if (json.status === 404) {
+            wxQrStatus.textContent = '扫码成功，请在手机上确认';
+            wxQrStatus.style.color = '#f59e0b';
+        } else if (json.status === 402) {
+            isWxQRPollingActive = false;
+            clearInterval(wxQrTimer);
+            wxQrTimer = null;
+            wxQrStatus.textContent = '二维码已失效';
+            wxQrOverlay.style.display = 'flex';
+        }
+    } catch (e) {
+        // ignore poll errors
+    } finally {
+        wxQrPollingInFlight = false;
+    }
+}
+
+// --- QQ群号弹窗 ---
+function showGroupPopup(groupName, groupNumber) {
+    // 检查是否是已满的群
+    const isFullGroup = (groupName === '一群' || groupName === '二群' || groupName === '三群' || groupName === '四群' || groupName === '五群' || groupName === '六群');
+    const displayNumber = isFullGroup ? '群已满人' : groupNumber;
+    const numberColor = isFullGroup ? '#ef4444' : '#10b981';
+
+    // 创建遮罩层
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;';
+
+    // 创建弹窗
+    const popup = document.createElement('div');
+    popup.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border:2px solid #ef4444;border-radius:16px;padding:2rem;max-width:400px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);';
+
+    popup.innerHTML = `
+        <div style="font-size:1.5rem;font-weight:bold;color:#f59e0b;margin-bottom:1rem;">⚠️ 重要提醒 ⚠️</div>
+        <div style="background:#ef4444;color:#fff;padding:1rem;border-radius:8px;margin-bottom:1.5rem;font-weight:bold;line-height:1.6;">
+            进群后请务必查看<span style="color:#fbbf24;font-size:1.1rem;">「群公告」</span>！<br>
+            不要提问群公告中已有的问题！<br>
+            否则将被禁言或移出群聊！
+        </div>
+        <div style="font-size:1.2rem;color:#94a3b8;margin-bottom:0.5rem;">${groupName}群号</div>
+        <div style="font-size:2rem;font-weight:bold;color:${numberColor};margin-bottom:1.5rem;font-family:monospace;letter-spacing:2px;">${displayNumber}</div>
+        <div style="display:flex;gap:1rem;justify-content:center;">
+            ${isFullGroup ? '' : '<button id="copy-group-btn" style="padding:0.8rem 1.5rem;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer;font-weight:bold;">复制群号</button>'}
+            <button id="close-group-btn" style="padding:0.8rem 1.5rem;background:#4b5563;color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer;">关闭</button>
+        </div>
+    `;
+
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+
+    // 复制按钮事件（仅非满人群显示）
+    if (!isFullGroup) {
+        popup.querySelector('#copy-group-btn').addEventListener('click', function () {
+            navigator.clipboard.writeText(groupNumber);
+            this.textContent = '已复制!';
+            this.style.background = '#059669';
+            setTimeout(() => {
+                this.textContent = '复制群号';
+                this.style.background = '#10b981';
+            }, 1500);
+        });
+    }
+
+    // 关闭按钮事件
+    popup.querySelector('#close-group-btn').addEventListener('click', () => {
+        document.body.removeChild(overlay);
+    });
+
+    // 点击遮罩关闭
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            document.body.removeChild(overlay);
+        }
+    });
+}
 
 // --- Init ---
 async function init() {
@@ -133,6 +328,10 @@ document.addEventListener('visibilitychange', () => {
             clearInterval(qrTimer);
             qrTimer = null;
         }
+        if (wxQrTimer) {
+            clearInterval(wxQrTimer);
+            wxQrTimer = null;
+        }
     } else {
         // Page is visible again, resume polling only if we were actively polling
         if (isQRPollingActive && qrSig && !qrTimer) {
@@ -140,65 +339,50 @@ document.addEventListener('visibilitychange', () => {
             // Immediately check once when coming back
             checkQR();
         }
+        if (isWxQRPollingActive && wxQrUuid && !wxQrTimer) {
+            wxQrTimer = setInterval(checkWxQR, 4000);
+            checkWxQR();
+        }
     }
 });
 
 async function startQRLogin() {
-    if (qrTimer) {
-        clearInterval(qrTimer);
-        qrTimer = null;
-    }
-    isQRPollingActive = false;
-    qrSig = '';
+    if (qrTimer) clearInterval(qrTimer);
 
     dom.qrLoading.style.display = 'flex';
     dom.qrOverlay.style.display = 'none';
     dom.qrImg.style.display = 'none';
-    dom.qrStatus.textContent = '姝ｅ湪鑾峰彇浜岀淮鐮?..';
+    dom.qrStatus.textContent = '正在获取二维码...';
     dom.qrStatus.style.color = '#aaa';
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
-
     try {
-        const res = await fetch(`${API_BASE}/auth/qr`, {
-            signal: controller.signal,
-            cache: 'no-store'
-        });
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
-        }
+        const res = await fetch(`${API_BASE}/auth/qr`);
         const json = await res.json();
 
-        if (json?.success && json?.data?.qrcode && json?.data?.qrsig) {
+        if (json.success) {
             dom.qrImg.src = json.data.qrcode;
             qrSig = json.data.qrsig;
 
             dom.qrLoading.style.display = 'none';
             dom.qrImg.style.display = 'block';
-            dom.qrStatus.textContent = '璇蜂娇鐢?鎵嬫満QQ 鎵爜鐧诲綍';
+            dom.qrStatus.textContent = '请使用 手机QQ 扫码登录';
 
             // Start polling
             isQRPollingActive = true;
             qrTimer = setInterval(checkQR, 3000);
-            checkQR();
         } else {
             throw new Error('Get QR Failed');
         }
     } catch (e) {
-        dom.qrLoading.style.display = 'none';
-        dom.qrImg.style.display = 'none';
-        dom.qrStatus.textContent = 'Failed to load QR. Click to retry.';
+        dom.qrStatus.textContent = '获取二维码失败，请刷新页面重试';
         dom.qrOverlay.style.display = 'flex';
-    } finally {
-        clearTimeout(timeoutId);
     }
 }
 
 async function checkQR() {
     if (!qrSig) return;
     try {
-        const res = await fetch(`${API_BASE}/auth/check?qrsig=${encodeURIComponent(qrSig)}`);
+        const res = await fetch(`${API_BASE}/auth/check?qrsig=${qrSig}`);
         const json = await res.json();
 
         // Correct Status Mapping
@@ -207,7 +391,7 @@ async function checkQR() {
             isQRPollingActive = false;
             clearInterval(qrTimer);
             qrTimer = null;
-            dom.qrStatus.textContent = '鐧诲綍鎴愬姛锛佽烦杞腑...';
+            dom.qrStatus.textContent = '登录成功！跳转中...';
             dom.qrStatus.style.color = '#10b981';
 
             state.cookie = json.data.cookie;
@@ -216,18 +400,18 @@ async function checkQR() {
             loadStats();
         } else if (json.status === 66) {
             // Waiting for scan
-            dom.qrStatus.textContent = '璇蜂娇鐢ㄦ墜鏈篞Q鎵爜';
+            dom.qrStatus.textContent = '请使用手机QQ扫码';
             dom.qrStatus.style.color = '#aaa';
         } else if (json.status === 67) {
             // Scanned, waiting confirm
-            dom.qrStatus.textContent = '鎵爜鎴愬姛锛岃鍦ㄦ墜鏈轰笂纭';
+            dom.qrStatus.textContent = '扫码成功，请在手机上确认';
             dom.qrStatus.style.color = '#f59e0b';
-        } else if (json.status === 65 || (json.message && json.message.includes('澶辨晥'))) {
+        } else if (json.status === 65 || (json.message && json.message.includes('失效'))) {
             // QR expired - stop polling permanently
             isQRPollingActive = false;
             clearInterval(qrTimer);
             qrTimer = null;
-            dom.qrStatus.textContent = '浜岀淮鐮佸凡澶辨晥';
+            dom.qrStatus.textContent = '二维码已失效';
             dom.qrOverlay.style.display = 'flex';
         }
     } catch (e) {
@@ -236,10 +420,14 @@ async function checkQR() {
 }
 
 function doLogout() {
-    if (confirm('纭畾瑕侀€€鍑虹櫥褰曞苟娓呴櫎鏈湴缂撳瓨鍚楋紵')) {
+    if (confirm('确定要退出登录并清除本地缓存吗？')) {
         localStorage.removeItem('nzm_cookie');
+        localStorage.removeItem('nzm_login_type');
         state.cookie = null;
+        state.collection = null;
         if (qrTimer) clearInterval(qrTimer);
+        if (wxQrTimer) clearInterval(wxQrTimer);
+        isWxQRPollingActive = false;
         switchView('login');
         startQRLogin();
     }
@@ -261,7 +449,7 @@ async function loadStats() {
         if (res.status === 401) {
             localStorage.removeItem('nzm_cookie');
             state.cookie = null;
-            alert('鐧诲綍鐘舵€佸凡澶辨晥锛岃閲嶆柊鎵爜鐧诲綍');
+            alert('登录状态已失效，请重新扫码登录');
             switchView('login');
             startQRLogin();
             return;
@@ -275,11 +463,11 @@ async function loadStats() {
             // Load fragment progress in sidebar
             loadFragments();
         } else {
-            showError('鏁版嵁鑾峰彇澶辫触: ' + (json.message || '鏈煡閿欒'));
+            showError('数据获取失败: ' + (json.message || '未知错误'));
             if (json.message === 'Missing Cookie') doLogout();
         }
     } catch (e) {
-        showError('璇锋眰澶辫触: ' + e.message);
+        showError('请求失败: ' + e.message);
     } finally {
         dom.loading.classList.add('hidden');
     }
@@ -295,10 +483,10 @@ async function loadMatchDetail(roomId, container, mode) {
             renderMatchDetail(json.data, container, mode);
             container.dataset.loaded = 'true';
         } else {
-            container.innerHTML = `<div style="text-align:center;color:#ff4444">鍔犺浇澶辫触</div>`;
+            container.innerHTML = `<div style="text-align:center;color:#ff4444">加载失败</div>`;
         }
     } catch (e) {
-        container.innerHTML = `<div style="text-align:center;color:#ff4444">缃戠粶閿欒</div>`;
+        container.innerHTML = `<div style="text-align:center;color:#ff4444">网络错误</div>`;
     }
 }
 
@@ -321,21 +509,21 @@ function showError(msg) {
 
 // --- Reused Render Logic ---
 const MAP_NAME = {};
-const DIFF_NAME = { '0': '榛樿', '1': '寮曞', '2': '鏅€?, '3': '鍥伴毦', '4': '鑻遍泟', '5': '鐐肩嫳', '6': '鎶樼（I', '7': '鎶樼（II', '8': '鎶樼（III', '9': '鎶樼（IV', '10': '鎶樼（V', '11': '鎶樼（VI' };
+const DIFF_NAME = { '0': '默认', '1': '引导', '2': '普通', '3': '困难', '4': '英雄', '5': '炼狱', '6': '折磨I', '7': '折磨II', '8': '折磨III', '9': '折磨IV', '10': '折磨V', '11': '折磨VI' };
 
 function getModeByMapId(mapId) {
     const id = parseInt(mapId);
-    if ([12, 14, 16, 17, 21, 30, 112, 114, 115].includes(id)) return '鍍靛案鐚庡満';
-    if ([300, 304, 306, 308].includes(id)) return '濉旈槻鎴?;
-    if ([321, 322, 323, 324].includes(id)) return '鏃剁┖杩界寧';
-    if (id >= 1000) return '鏈虹敳鎴?;
-    return '鏈煡';
+    if ([12, 14, 16, 17, 21, 30, 112, 114, 115].includes(id)) return '僵尸猎场';
+    if ([300, 304, 306, 308].includes(id)) return '塔防战';
+    if ([321, 322, 323, 324].includes(id)) return '时空追猎';
+    if (id >= 1000) return '机甲战';
+    return '未知';
 }
 
 function renderStats(data) {
     // Fill Summary
     dom.gameCount.textContent = data.officialSummary?.huntGameCount || '-';
-    dom.playTime.textContent = data.officialSummary?.playtime ? `${Math.floor(data.officialSummary.playtime / 60)}鏃禶 : '-';
+    dom.playTime.textContent = data.officialSummary?.playtime ? `${Math.floor(data.officialSummary.playtime / 60)}时` : '-';
 
     dom.recentGames.textContent = data.totalGames;
     dom.recentWin.textContent = data.winRate + '%';
@@ -348,10 +536,10 @@ function renderStats(data) {
         modeHtml += `
             <div class="stat-card mode-card">
                 <h3>${m}</h3>
-                <div class="value">${info.total} <small>鍦?/small></div>
+                <div class="value">${info.total} <small>场</small></div>
                 <div class="details">
-                    <span class="win">鑳?${info.win}</span>
-                    <span class="loss">璐?${info.loss}</span>
+                    <span class="win">胜 ${info.win}</span>
+                    <span class="loss">负 ${info.loss}</span>
                     <span style="opacity:0.7">${rate}%</span>
                 </div>
             </div>`;
@@ -365,7 +553,7 @@ function renderStats(data) {
         let diffStr = '';
         for (const [d, v] of Object.entries(diffs)) {
             total += v.total; win += v.win;
-            diffStr += `<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-top:2px;"><span>${d}</span><span>${v.total}鍦?(${v.win > 0 ? Math.floor(v.win / v.total * 100) : 0}%)</span></div>`;
+            diffStr += `<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-top:2px;"><span>${d}</span><span>${v.total}场 (${v.win > 0 ? Math.floor(v.win / v.total * 100) : 0}%)</span></div>`;
         }
         // Find correct image from game list if possible
         const found = data.gameList.find(g => g.mapName === m);
@@ -374,14 +562,14 @@ function renderStats(data) {
 
         // Manual fallbacks only if backend is empty
         if (!found?.icon) {
-            if (m.includes('澶ч兘浼?)) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-14.png';
-            if (m.includes('澶嶆椿鑺?)) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-12.png';
-            if (m.includes('椋庢毚')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-1000.png';
-            if (m.includes('鏍归櫎')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-321.png';
-            if (m.includes('鏄嗕粦绁炲')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-16.png';
-            if (m.includes('绮剧粷鍙ゅ煄')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-17.png';
-            if (m.includes('鑱旂洘澶у帵')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-306.png';
-            if (m.includes('鐚庢潃鍗楀崄瀛?)) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-323.png';
+            if (m.includes('大都会')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-14.png';
+            if (m.includes('复活节')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-12.png';
+            if (m.includes('风暴')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-1000.png';
+            if (m.includes('根除')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-321.png';
+            if (m.includes('昆仑神宫')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-16.png';
+            if (m.includes('精绝古城')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-17.png';
+            if (m.includes('联盟大厦')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-306.png';
+            if (m.includes('猎杀南十字')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-323.png';
         }
 
         const rate = total > 0 ? ((win / total) * 100).toFixed(0) : 0;
@@ -390,7 +578,7 @@ function renderStats(data) {
             <div class="stat-card map-card" style="background-image: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.8) 100%), url('${img}'); background-size: cover; background-position: center;">
                 <div style="position:relative; z-index:2; height:100%; display:flex; flex-direction:column; justify-content:flex-end;">
                     <h3 style="margin:0 0 0.5rem 0; font-size:1.1rem; text-shadow:0 2px 4px rgba(0,0,0,0.8);">${m}</h3>
-                    <div style="font-size:0.8rem; margin-bottom:0.5rem; opacity:0.9;">${total}鍦?- ${rate}% 鑳滅巼</div>
+                    <div style="font-size:0.8rem; margin-bottom:0.5rem; opacity:0.9;">${total}场 - ${rate}% 胜率</div>
                     <div class="map-diffs" style="margin-top:0.25rem;">${diffStr}</div>
                 </div>
             </div>`;
@@ -407,7 +595,7 @@ const ITEMS_PER_PAGE = 10;
 function filteredLength(list) {
     return list.filter(g => {
         const mode = getModeByMapId(g.iMapId);
-        if (mode === '鏈虹敳') return false;
+        if (mode === '机甲') return false;
         if (currentModeFilter === 'all') return true;
         return mode === currentModeFilter;
     }).length;
@@ -419,13 +607,13 @@ function renderMatchHistory(gameList) {
 
     const filteredList = gameList.filter(g => {
         const mode = getModeByMapId(g.iMapId);
-        if (mode === '鏈虹敳鎴?) return false;
+        if (mode === '机甲战') return false;
         if (currentModeFilter === 'all') return true;
         return mode === currentModeFilter;
     });
 
     if (filteredList.length === 0) {
-        dom.matchHistory.innerHTML = '<div class="match-item">鏆傛棤绗﹀悎鏉′欢鐨勫灞€璁板綍</div>';
+        dom.matchHistory.innerHTML = '<div class="match-item">暂无符合条件的对局记录</div>';
         updatePagination(0);
         return;
     }
@@ -437,11 +625,11 @@ function renderMatchHistory(gameList) {
 
     const htmlList = pageData.map((game, idx) => {
         const mode = getModeByMapId(game.iMapId);
-        const mapName = game.mapName || MAP_NAME[game.iMapId] || `鏈煡(${game.iMapId})`;
+        const mapName = game.mapName || MAP_NAME[game.iMapId] || `未知(${game.iMapId})`;
         const diffName = game.diffName || DIFF_NAME[game.iSubModeType] || game.iSubModeType;
         const isWin = game.iIsWin === '1' || game.iIsWin === 1;
         const duration = parseInt(game.iDuration) || 0;
-        const durationStr = `${Math.floor(duration / 60)}鍒?{duration % 60}绉抈;
+        const durationStr = `${Math.floor(duration / 60)}分${duration % 60}秒`;
         const startTime = game.dtGameStartTime || '';
         const score = parseInt(game.iScore) || 0;
 
@@ -456,14 +644,14 @@ function renderMatchHistory(gameList) {
         if (game.icon) img = game.icon;
         if (!game.icon) {
             // Simple fallback based on name or ID if needed, similar to map stats
-            if (mapName.includes('澶ч兘浼?)) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-14.png';
-            else if (mapName.includes('澶嶆椿鑺?)) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-12.png';
-            else if (mapName.includes('椋庢毚')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-1000.png';
-            else if (mapName.includes('鏍归櫎')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-321.png';
-            else if (mapName.includes('鏄嗕粦绁炲')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-16.png';
-            else if (mapName.includes('绮剧粷鍙ゅ煄')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-17.png';
-            else if (mapName.includes('鑱旂洘澶у帵')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-306.png';
-            else if (mapName.includes('鐚庢潃鍗楀崄瀛?)) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-323.png';
+            if (mapName.includes('大都会')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-14.png';
+            else if (mapName.includes('复活节')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-12.png';
+            else if (mapName.includes('风暴')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-1000.png';
+            else if (mapName.includes('根除')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-321.png';
+            else if (mapName.includes('昆仑神宫')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-16.png';
+            else if (mapName.includes('精绝古城')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-17.png';
+            else if (mapName.includes('联盟大厦')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-306.png';
+            else if (mapName.includes('猎杀南十字')) img = 'https://nzm.playerhub.qq.com/playerhub/60106/maps/maps-323.png';
         }
 
         // Format Date: "01-25 15:13"
@@ -484,7 +672,7 @@ function renderMatchHistory(gameList) {
                     
                     <div class="match-info-center">
                         <div class="match-info-top">
-                            <span class="match-result-text ${isWin ? 'text-red' : ''}">${isWin ? '鑳滃埄' : '澶辫触'}</span>
+                            <span class="match-result-text ${isWin ? 'text-red' : ''}">${isWin ? '胜利' : '失败'}</span>
                             <span class="match-mode-text">${mode}</span>
                         </div>
                         <div class="match-info-bottom">
@@ -500,7 +688,7 @@ function renderMatchHistory(gameList) {
 
                     <div class="match-info-right">
                         <div class="match-score-text">${formatNumber(score)}</div>
-                        <div class="match-duration-text">${Math.floor(duration / 60)}鍒?{duration % 60}绉?/div>
+                        <div class="match-duration-text">${Math.floor(duration / 60)}分${duration % 60}秒</div>
                     </div>
                 </div>
                 
@@ -520,7 +708,7 @@ function renderMatchHistory(gameList) {
                 const mode = item.dataset.mode;
                 const detailContainer = document.getElementById(`detail-${roomId}`);
                 if (detailContainer && !detailContainer.dataset.loaded) {
-                    detailContainer.innerHTML = '<div style="text-align:center;padding:1rem;">姝ｅ湪鍔犺浇...</div>';
+                    detailContainer.innerHTML = '<div style="text-align:center;padding:1rem;">正在加载...</div>';
                     await loadMatchDetail(roomId, detailContainer, mode);
                 }
             }
@@ -532,7 +720,7 @@ function renderMatchHistory(gameList) {
 
 function updatePagination(totalPages) {
     if (!dom.pageInfo) return;
-    dom.pageInfo.textContent = `绗?${currentPage} 椤?/ 鍏?${totalPages} 椤礰;
+    dom.pageInfo.textContent = `第 ${currentPage} 页 / 共 ${totalPages} 页`;
     dom.prevPage.disabled = currentPage <= 1;
     dom.nextPage.disabled = currentPage >= totalPages;
 }
@@ -543,67 +731,119 @@ function formatNumber(num) {
 
 function getQualityLabel(quality) {
     switch (quality) {
-        case 4: return '浼犺';
-        case 3: return '鍙茶瘲';
-        case 2: return '绋€鏈?;
-        default: return '鏅€?;
+        case 4: return '传说';
+        case 3: return '史诗';
+        case 2: return '稀有';
+        default: return '普通';
     }
 }
 
-function renderEquipmentScheme(equipmentScheme, playerId) {
-    if (!equipmentScheme || equipmentScheme.length === 0) return '';
+// Render compact equipment for inline display in player cards
+function renderEquipmentCompact(equipmentScheme) {
+    if (!equipmentScheme || equipmentScheme.length === 0) {
+        return '<p style="color:#888; text-align:center; padding:1rem;">无配装数据</p>';
+    }
 
     const weaponsHtml = equipmentScheme.map(weapon => {
         const weaponName = decodeURIComponent(weapon.weaponName || '');
         const quality = weapon.quality || 1;
         const qualityClass = `weapon-quality-${quality}`;
-        const qualityLabel = getQualityLabel(quality);
-        const qualityBadgeClass = quality === 4 ? 'badge-legendary' : quality === 3 ? 'badge-epic' : quality === 2 ? 'badge-rare' : 'badge-common';
 
-        // Render plugins
+        // Render plugins (small icons)
         const pluginsHtml = (weapon.commonItems || []).map(plugin => {
             const pluginName = decodeURIComponent(plugin.itemName || '');
             return `
-                <div class="plugin-icon" title="${pluginName}">
-                    <img src="${plugin.pic}" alt="${pluginName}" loading="lazy" onerror="this.style.opacity='0.3'">
+                <div class="plugin-item-compact">
+                    <img src="${plugin.pic}" class="compact-plugin-icon" title="${pluginName}" loading="lazy">
+                    <span class="plugin-name-compact">${pluginName}</span>
                 </div>
             `;
         }).join('');
 
         return `
-            <div class="weapon-card ${qualityClass}">
-                <div class="weapon-image-container">
-                    <img src="${weapon.pic}" alt="${weaponName}" class="weapon-image" loading="lazy" onerror="this.style.opacity='0.3'">
-                    <span class="weapon-quality-badge ${qualityBadgeClass}">${qualityLabel}</span>
+            <div class="weapon-card-compact ${qualityClass}">
+                <div class="weapon-image-compact">
+                    <img src="${weapon.pic}" alt="${weaponName}" loading="lazy" onerror="this.style.opacity='0.3'">
                 </div>
-                <div class="weapon-name" title="${weaponName}">${weaponName}</div>
-                <div class="plugin-grid">
+                <div class="weapon-name-compact" title="${weaponName}">${weaponName}</div>
+                <div class="weapon-plugins-compact">
                     ${pluginsHtml}
                 </div>
             </div>
         `;
     }).join('');
 
-    return `
-        <div class="equipment-section" id="equipment-${playerId}">
-            <div class="equipment-header" onclick="toggleEquipment('${playerId}')">
-                <span class="equipment-header-title">鏈眬閰嶈</span>
-                <span class="equipment-toggle-icon">鈻?/span>
-            </div>
-            <div class="equipment-content">
-                <div class="equipment-grid">
-                    ${weaponsHtml}
-                </div>
-            </div>
-        </div>
-    `;
+    return `<div class="equipment-compact-grid">${weaponsHtml}</div>`;
 }
 
-function toggleEquipment(playerId) {
-    const section = document.getElementById(`equipment-${playerId}`);
-    if (section) {
-        section.classList.toggle('expanded');
+// Toggle between stats and equipment view for a specific match detail
+function toggleMatchDetailView(btn) {
+    const container = btn.closest('.match-details');
+    if (!container) return;
+
+    // Toggle state class on container to track state
+    const isEquipmentView = container.classList.toggle('equipment-mode');
+
+    // Toggle hidden classes within this container
+    const allStats = container.querySelectorAll('.player-view[id^="stats-"]');
+    const allEquip = container.querySelectorAll('.player-view[id^="equipment-"]');
+    const playerLists = container.querySelectorAll('.player-list');
+    const userDetailRows = container.querySelectorAll('.user-detail-row');
+
+    const toggleIcon = btn.querySelector('#global-toggle-icon');
+    const toggleText = btn.querySelector('#global-toggle-text');
+
+    if (isEquipmentView) {
+        // Switch to Equipment View
+        allStats.forEach(el => el.classList.add('hidden'));
+        allEquip.forEach(el => el.classList.remove('hidden'));
+        playerLists.forEach(el => el.classList.add('large-mode')); // Enable large mode
+        userDetailRows.forEach(el => el.classList.add('large-mode')); // Enable large mode for self
+
+        if (toggleIcon) toggleIcon.innerHTML = '<path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>'; // Grid icon
+        if (toggleText) toggleText.textContent = '显示数据';
+    } else {
+        // Switch to Stats View
+        allStats.forEach(el => el.classList.remove('hidden'));
+        allEquip.forEach(el => el.classList.add('hidden'));
+        playerLists.forEach(el => el.classList.remove('large-mode')); // Disable large mode
+        userDetailRows.forEach(el => el.classList.remove('large-mode')); // Disable large mode for self
+
+        if (toggleIcon) toggleIcon.innerHTML = '<path d="M14.5 13.5h2v-3.5h-2v3.5zm-3.5 0h2v-6h-2v6zm-3.5 0h2v-8.5h-2v8.5zm-3.5 0h2v-6h-2v6zm-3.5 3.5h19v-14h-19v14zm1.5-1.5v-11h16v11h-16z"/>'; // Chart icon
+        if (toggleText) toggleText.textContent = '显示配装';
     }
+}
+
+// Render Checkpoint Times
+function renderCheckpointTimes(partitionDetails) {
+    if (!partitionDetails || partitionDetails.length === 0) return '';
+
+    // Sort by areaId to maintain correct game progression order
+    const sortedCheckpoints = [...partitionDetails].sort((a, b) => {
+        return parseInt(a.areaId) - parseInt(b.areaId);
+    });
+
+    const checkpointsHtml = sortedCheckpoints.map(checkpoint => {
+        const areaName = CHECKPOINT_AREAS[checkpoint.areaId] || `未知环节(${checkpoint.areaId})`;
+        const usedTime = parseInt(checkpoint.usedTime) || 0;
+        const minutes = Math.floor(usedTime / 60);
+        const seconds = usedTime % 60;
+        const timeStr = minutes > 0 ? `${minutes}分${seconds}秒` : `${seconds}秒`;
+
+        return `
+            <div class="checkpoint-item">
+                <div class="checkpoint-name">${areaName}</div>
+                <div class="checkpoint-time">${timeStr}</div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="checkpoint-container">
+            <div class="checkpoint-title">区域用时</div>
+            <div class="checkpoint-list">${checkpointsHtml}</div>
+        </div>
+    `;
 }
 
 function renderMatchDetail(data, container, mode) {
@@ -611,63 +851,110 @@ function renderMatchDetail(data, container, mode) {
     const teammates = (data.list || []).filter(p => p.nickname !== self.nickname);
     teammates.sort((a, b) => (parseInt(b.baseDetail.iScore) || 0) - (parseInt(a.baseDetail.iScore) || 0));
 
-    // Hide extra stats for Tower Defense (濉旈槻鎴? and Time Hunting (鏃剁┖杩界寧)
-    const showExtra = mode !== '濉旈槻鎴? && mode !== '鏃剁┖杩界寧';
+    // Hide extra stats for Tower Defense (塔防战) and Time Hunting (时空追猎)
+    const showExtra = mode !== '塔防战' && mode !== '时空追猎';
 
-    let html = '<div class="player-list">';
+    // Render checkpoint times if available (only for 猎场)
+    let checkpointHtml = '';
+    if (self.huntingDetails?.partitionDetails && self.huntingDetails.partitionDetails.length > 0) {
+        checkpointHtml = renderCheckpointTimes(self.huntingDetails.partitionDetails);
+    }
+
+    // Global Toggle Button
+    const globalToggleHtml = `
+        <div class="global-toggle-container" style="display:flex; justify-content:center; margin-bottom:1rem; position:relative;">
+            <button class="global-toggle-btn" onclick="toggleMatchDetailView(this)">
+                <svg id="global-toggle-icon" class="line-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                     <path d="M14.5 13.5h2v-3.5h-2v3.5zm-3.5 0h2v-6h-2v6zm-3.5 0h2v-8.5h-2v8.5zm-3.5 0h2v-6h-2v6zm-3.5 3.5h19v-14h-19v14zm1.5-1.5v-11h16v11h-16z"/>
+                </svg>
+                <span id="global-toggle-text" style="font-size:0.8rem; margin-left:0.4rem;">显示配装</span>
+            </button>
+        </div>
+    `;
+
+    let html = checkpointHtml + globalToggleHtml + '<div class="player-list">';
     teammates.forEach((p, idx) => {
         const info = p.baseDetail;
         const hunt = p.huntingDetails || {};
         const hasExtra = showExtra && ((hunt.damageTotalOnBoss || hunt.DamageTotalOnBoss) > 0 || (hunt.damageTotalOnMobs || hunt.DamageTotalOnMobs) > 0 || hunt.totalCoin > 0);
-        const equipmentHtml = renderEquipmentScheme(p.equipmentScheme, `teammate-${idx}`);
+        const equipmentCompactHtml = renderEquipmentCompact(p.equipmentScheme);
+        const playerId = `teammate-${idx}`;
+
         html += `
-            <div class="player-item" style="display:block;">
-                <div style="display:flex; align-items:center; gap:0.75rem;">
-                    <img src="${decodeURIComponent(p.avatar)}" class="player-avatar" onerror="this.src='images/maps-304.png'">
-                    <div class="player-info">
-                        <div class="player-name">${decodeURIComponent(p.nickname)}</div>
-                        <div class="player-stats-grid">
-                            <div class="stat-group">
-                                <span>绉垎: ${formatNumber(info.iScore)}</span>
-                                <span>鍑绘潃: ${info.iKills}</span>
-                                <span>姝讳骸: ${info.iDeaths}</span>
+            <div class="player-item" data-player-id="${playerId}" style="display:block; position:relative;">
+                <!-- Stats View (Default) -->
+                <div id="stats-${playerId}" class="player-view">
+                    <div style="display:flex; align-items:center; gap:0.75rem;">
+                        <img src="${decodeURIComponent(p.avatar)}" class="player-avatar" onerror="this.src='images/maps-304.png'">
+                        <div class="player-info">
+                            <div class="player-name">${decodeURIComponent(p.nickname)}</div>
+                            <div class="player-stats-grid">
+                                <div class="stat-group">
+                                    <span>积分: ${formatNumber(info.iScore)}</span>
+                                    <span>击杀: ${info.iKills}</span>
+                                    <span>死亡: ${info.iDeaths}</span>
+                                </div>
+                                ${hasExtra ? `
+                                <div class="stat-group extra">
+                                    <span>Boss: ${formatNumber(hunt.damageTotalOnBoss || hunt.DamageTotalOnBoss || 0)}</span>
+                                    <span>小怪: ${formatNumber(hunt.damageTotalOnMobs || hunt.DamageTotalOnMobs || 0)}</span>
+                                    <span>金币: ${formatNumber(hunt.totalCoin || 0)}</span>
+                                </div>` : ''}
                             </div>
-                            ${hasExtra ? `
-                            <div class="stat-group extra">
-                                <span>Boss: ${formatNumber(hunt.damageTotalOnBoss || hunt.DamageTotalOnBoss || 0)}</span>
-                                <span>灏忔€? ${formatNumber(hunt.damageTotalOnMobs || hunt.DamageTotalOnMobs || 0)}</span>
-                                <span>閲戝竵: ${formatNumber(hunt.totalCoin || 0)}</span>
-                            </div>` : ''}
                         </div>
                     </div>
                 </div>
-                ${equipmentHtml}
+                
+                <!-- Equipment View (Hidden by default) -->
+                <div id="equipment-${playerId}" class="player-view hidden">
+                    <div class="player-equipment-inline">
+                        <div class="equipment-inline-header">
+                            <img src="${decodeURIComponent(p.avatar)}" class="player-avatar-small" onerror="this.src='images/maps-304.png'">
+                            <span class="player-name-small">${decodeURIComponent(p.nickname)}</span>
+                        </div>
+                        ${equipmentCompactHtml}
+                    </div>
+                </div>
             </div>`;
     });
     html += '</div>';
 
     const selfInfo = self.baseDetail;
     const selfHunt = self.huntingDetails || {};
-    const selfEquipmentHtml = renderEquipmentScheme(self.equipmentScheme, 'self');
+    const selfEquipmentCompactHtml = renderEquipmentCompact(self.equipmentScheme);
+
     html += `
-        <div class="user-detail-row" style="margin-top:1rem; background:rgba(255,255,255,0.05); padding:1rem; border-radius:0.5rem;">
-            <div style="display:flex; gap:1rem; align-items:center; margin-bottom:${selfEquipmentHtml ? '1rem' : '0'};">
-                <div style="flex-shrink:0; text-align:center;">
-                    <img src="${decodeURIComponent(self.avatar)}" style="width:50px; height:50px; border-radius:50%; border:2px solid var(--accent);">
-                    <div style="font-weight:bold; margin-top:0.25rem;">${decodeURIComponent(self.nickname)}</div>
-                </div>
-                <div class="detail-grid" style="flex-grow:1; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));">
-                    <div class="detail-item"><div class="label">绉垎</div><div class="value">${formatNumber(selfInfo.iScore)}</div></div>
-                    <div class="detail-item"><div class="label">鍑绘潃</div><div class="value">${selfInfo.iKills}</div></div>
-                    <div class="detail-item"><div class="label">姝讳骸</div><div class="value">${selfInfo.iDeaths}</div></div>
-                    ${showExtra ? `
-                    <div class="detail-item"><div class="label">Boss浼ゅ</div><div class="value">${formatNumber(selfHunt.damageTotalOnBoss || selfHunt.DamageTotalOnBoss || 0)}</div></div>
-                    <div class="detail-item"><div class="label">灏忔€激瀹?/div><div class="value">${formatNumber(selfHunt.damageTotalOnMobs || selfHunt.DamageTotalOnMobs || 0)}</div></div>
-                    <div class="detail-item"><div class="label">閲戝竵</div><div class="value">${formatNumber(selfHunt.totalCoin || 0)}</div></div>
-                    ` : ''}
+        <div class="user-detail-row" data-player-id="self" style="margin-top:1rem; background:rgba(255,255,255,0.05); padding:1rem; border-radius:0.5rem; position:relative;">
+            <!-- Stats View (Default) -->
+            <div id="stats-self" class="player-view">
+                <div style="display:flex; gap:1rem; align-items:center;">
+                    <div style="flex-shrink:0; text-align:center;">
+                        <img src="${decodeURIComponent(self.avatar)}" style="width:50px; height:50px; border-radius:50%; border:2px solid var(--accent);">
+                        <div style="font-weight:bold; margin-top:0.25rem;">${decodeURIComponent(self.nickname)}</div>
+                    </div>
+                    <div class="detail-grid" style="flex-grow:1; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));">
+                        <div class="detail-item"><div class="label">积分</div><div class="value">${formatNumber(selfInfo.iScore)}</div></div>
+                        <div class="detail-item"><div class="label">击杀</div><div class="value">${selfInfo.iKills}</div></div>
+                        <div class="detail-item"><div class="label">死亡</div><div class="value">${selfInfo.iDeaths}</div></div>
+                        ${showExtra ? `
+                        <div class="detail-item"><div class="label">Boss伤害</div><div class="value">${formatNumber(selfHunt.damageTotalOnBoss || selfHunt.DamageTotalOnBoss || 0)}</div></div>
+                        <div class="detail-item"><div class="label">小怪伤害</div><div class="value">${formatNumber(selfHunt.damageTotalOnMobs || selfHunt.DamageTotalOnMobs || 0)}</div></div>
+                        <div class="detail-item"><div class="label">金币</div><div class="value">${formatNumber(selfHunt.totalCoin || 0)}</div></div>
+                        ` : ''}
+                    </div>
                 </div>
             </div>
-            ${selfEquipmentHtml}
+            
+            <!-- Equipment View (Hidden by default) -->
+            <div id="equipment-self" class="player-view hidden">
+                <div class="player-equipment-inline">
+                    <div class="equipment-inline-header">
+                        <img src="${decodeURIComponent(self.avatar)}" class="player-avatar-small" onerror="this.src='images/maps-304.png'">
+                        <span class="player-name-small">${decodeURIComponent(self.nickname)}</span>
+                    </div>
+                    ${selfEquipmentCompactHtml}
+                </div>
+            </div>
         </div>`;
 
     container.innerHTML = html;
@@ -697,9 +984,9 @@ function switchTab(tab) {
 
 // --- Collection Data ---
 async function loadCollection() {
-    dom.weaponGrid.innerHTML = '<p style="color:#888;">鍔犺浇涓?..</p>';
-    dom.trapGrid.innerHTML = '<p style="color:#888;">鍔犺浇涓?..</p>';
-    dom.pluginGrid.innerHTML = '<p style="color:#888;">鍔犺浇涓?..</p>';
+    dom.weaponGrid.innerHTML = '<p style="color:#888;">加载中...</p>';
+    dom.trapGrid.innerHTML = '<p style="color:#888;">加载中...</p>';
+    dom.pluginGrid.innerHTML = '<p style="color:#888;">加载中...</p>';
 
     try {
         const res = await fetch(`${API_BASE}/collection?type=all`, {
@@ -736,10 +1023,10 @@ async function loadCollection() {
 
 function getQualityBadge(quality) {
     switch (quality) {
-        case 4: return '<span class="collection-item-badge badge-legendary">浼犺</span>';
-        case 3: return '<span class="collection-item-badge badge-epic">鍙茶瘲</span>';
-        case 2: return '<span class="collection-item-badge badge-rare">绋€鏈?/span>';
-        default: return '<span class="collection-item-badge badge-common">鏅€?/span>';
+        case 4: return '<span class="collection-item-badge badge-legendary">传说</span>';
+        case 3: return '<span class="collection-item-badge badge-epic">史诗</span>';
+        case 2: return '<span class="collection-item-badge badge-rare">稀有</span>';
+        default: return '<span class="collection-item-badge badge-common">普通</span>';
     }
 }
 
@@ -750,10 +1037,12 @@ function renderWeapons(weapons, filterQuality = 'all') {
         ? [...weapons]
         : weapons.filter(w => w.quality == filterQuality);
 
-    // 鎺掑簭锛氬凡瑙ｉ攣浼樺厛锛岀劧鍚庢寜鍝佽川浠庨珮鍒颁綆 (4=浼犺 > 3=鍙茶瘲 > 2=绋€鏈?> 1=鏅€?
+    // 排序：已解锁优先，然后按品质从高到低 (4=传说 > 3=史诗 > 2=稀有 > 1=普通)
     filtered.sort((a, b) => {
-        // 鍏堟寜鏄惁鎷ユ湁鎺掑簭锛堟嫢鏈夌殑鍦ㄥ墠锛?        if (a.owned !== b.owned) return a.owned ? -1 : 1;
-        // 鍐嶆寜鍝佽川鎺掑簭锛堥珮鍝佽川鍦ㄥ墠锛?        return (b.quality || 0) - (a.quality || 0);
+        // 先按是否拥有排序（拥有的在前）
+        if (a.owned !== b.owned) return a.owned ? -1 : 1;
+        // 再按品质排序（高品质在前）
+        return (b.quality || 0) - (a.quality || 0);
     });
 
     dom.weaponGrid.innerHTML = filtered.map(w => `
@@ -813,14 +1102,15 @@ function filterPlugins(slot) {
 // --- Fragment Progress ---
 function renderFragments(fragments) {
     if (!fragments || fragments.length === 0) {
-        dom.fragmentList.innerHTML = '<p style="color:#888;font-size:0.9rem;">鏆傛棤纰庣墖杩涘害</p>';
+        dom.fragmentList.innerHTML = '<p style="color:#888;font-size:0.9rem;">暂无碎片进度</p>';
         return;
     }
 
-    // 鍙樉绀烘湁纰庣墖杩涘害鐨勬鍣?    const withProgress = fragments.filter(f => f.itemProgress && f.itemProgress.current > 0);
+    // 只显示有碎片进度的武器
+    const withProgress = fragments.filter(f => f.itemProgress && f.itemProgress.current > 0);
 
     if (withProgress.length === 0) {
-        dom.fragmentList.innerHTML = '<p style="color:#888;font-size:0.9rem;">鏆傛棤纰庣墖杩涘害</p>';
+        dom.fragmentList.innerHTML = '<p style="color:#888;font-size:0.9rem;">暂无碎片进度</p>';
         return;
     }
 
@@ -1059,9 +1349,110 @@ function initSidebar() {
     }
 }
 
+// --- Donate Sidebar Toggle & Drag (PC Only) ---
+function initDonateSidebar() {
+    const sidebar = document.getElementById('donate-sidebar');
+    const toggleBtn = document.getElementById('donate-toggle');
+    const dragHandle = document.getElementById('donate-drag-handle');
+
+    if (!sidebar || !toggleBtn) return;
+
+    // Restore collapsed state
+    if (localStorage.getItem('donate_collapsed') === 'true') {
+        sidebar.classList.add('collapsed');
+    }
+
+    // Restore position
+    const savedPos = localStorage.getItem('donate_position');
+    if (savedPos) {
+        try {
+            const pos = JSON.parse(savedPos);
+            sidebar.style.left = pos.left + 'px';
+            sidebar.style.top = pos.top + 'px';
+        } catch (e) { }
+    }
+
+    // Toggle
+    toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sidebar.classList.add('collapsed');
+        localStorage.setItem('donate_collapsed', 'true');
+    });
+
+    let justDragged = false;
+    sidebar.addEventListener('click', (e) => {
+        if (justDragged) { justDragged = false; return; }
+        if (sidebar.classList.contains('collapsed')) {
+            sidebar.classList.remove('collapsed');
+            localStorage.setItem('donate_collapsed', 'false');
+        }
+    });
+
+    // Drag
+    let isDragging = false, hasMoved = false, startX, startY, offsetX, offsetY;
+
+    const startDrag = (e) => {
+        if (!sidebar.classList.contains('collapsed') && !e.target.closest('#donate-drag-handle')) return;
+        if (e.target.closest('#donate-toggle')) return;
+        isDragging = true; hasMoved = false;
+        sidebar.classList.add('dragging');
+        const rect = sidebar.getBoundingClientRect();
+        const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+        startX = clientX; startY = clientY;
+        offsetX = clientX - rect.left; offsetY = clientY - rect.top;
+        e.preventDefault();
+    };
+
+    const doDrag = (e) => {
+        if (!isDragging) return;
+        const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+        if (Math.abs(clientX - startX) > 3 || Math.abs(clientY - startY) > 3) hasMoved = true;
+        let newLeft = Math.max(0, Math.min(clientX - offsetX, window.innerWidth - sidebar.offsetWidth));
+        let newTop = Math.max(0, Math.min(clientY - offsetY, window.innerHeight - sidebar.offsetHeight));
+        sidebar.style.left = newLeft + 'px';
+        sidebar.style.top = newTop + 'px';
+        e.preventDefault();
+    };
+
+    const endDrag = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        sidebar.classList.remove('dragging');
+        if (hasMoved) { justDragged = true; setTimeout(() => justDragged = false, 100); }
+        const rect = sidebar.getBoundingClientRect();
+        localStorage.setItem('donate_position', JSON.stringify({ left: rect.left, top: rect.top }));
+    };
+
+    dragHandle.addEventListener('mousedown', startDrag);
+    sidebar.addEventListener('mousedown', (e) => { if (sidebar.classList.contains('collapsed')) startDrag(e); });
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', endDrag);
+    dragHandle.addEventListener('touchstart', startDrag, { passive: false });
+    sidebar.addEventListener('touchstart', (e) => { if (sidebar.classList.contains('collapsed')) startDrag(e); }, { passive: false });
+    document.addEventListener('touchmove', doDrag, { passive: false });
+    document.addEventListener('touchend', endDrag);
+
+    // Keep in bounds on resize
+    window.addEventListener('resize', () => {
+        if (sidebar.offsetWidth === 0) return;
+        const pos = localStorage.getItem('donate_position');
+        if (!pos) return;
+        try {
+            const { left, top } = JSON.parse(pos);
+            const maxLeft = window.innerWidth - sidebar.offsetWidth;
+            const maxTop = window.innerHeight - sidebar.offsetHeight;
+            sidebar.style.left = Math.max(0, Math.min(left, maxLeft)) + 'px';
+            sidebar.style.top = Math.max(0, Math.min(top, maxTop)) + 'px';
+        } catch (e) { }
+    });
+}
+
 // Initialize sidebars after DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     initSidebar();
+    initDonateSidebar();
 });
 
 init();
